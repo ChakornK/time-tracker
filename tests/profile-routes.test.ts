@@ -139,6 +139,95 @@ test("changing email requires the current password and a free address", async (t
   assert.equal(changed.json().user.email, newEmail);
 });
 
+test("categories can be renamed and deleted by their owner", async (t) => {
+  const database = createDatabase(config);
+  const app = buildApp({ config, db: database.db, logger: false });
+  await app.ready();
+  const registeredUsers: string[] = [];
+
+  t.after(async () => {
+    if (registeredUsers.length) {
+      await database.db.deleteFrom("users").where("id", "in", registeredUsers).execute();
+    }
+    await app.close();
+    await database.close();
+  });
+
+  const userA = await createAccount(app, "category_a");
+  const userB = await createAccount(app, "category_b");
+  registeredUsers.push(userA.id, userB.id);
+  const authA = { authorization: `Bearer ${userA.token}` };
+  const authB = { authorization: `Bearer ${userB.token}` };
+
+  const reading = (await app.inject({ method: "POST", url: "/api/v1/categories", headers: authA, payload: { name: "Reading" } }))
+    .json().category;
+  await app.inject({ method: "POST", url: "/api/v1/categories", headers: authA, payload: { name: "Writing" } });
+
+  const renamed = await app.inject({
+    method: "PATCH",
+    url: `/api/v1/categories/${reading.id}`,
+    headers: authA,
+    payload: { name: "Books" },
+  });
+  assert.equal(renamed.statusCode, 200);
+  assert.equal(renamed.json().category.name, "Books");
+  assert.equal(renamed.json().category.colorHex, reading.colorHex);
+
+  const conflict = await app.inject({
+    method: "PATCH",
+    url: `/api/v1/categories/${reading.id}`,
+    headers: authA,
+    payload: { name: "Writing" },
+  });
+  assert.equal(conflict.statusCode, 409);
+
+  const empty = await app.inject({ method: "PATCH", url: `/api/v1/categories/${reading.id}`, headers: authA, payload: {} });
+  assert.equal(empty.statusCode, 400);
+
+  const foreignRename = await app.inject({
+    method: "PATCH",
+    url: `/api/v1/categories/${reading.id}`,
+    headers: authB,
+    payload: { name: "Mine" },
+  });
+  assert.equal(foreignRename.statusCode, 404);
+  const foreignDelete = await app.inject({ method: "DELETE", url: `/api/v1/categories/${reading.id}`, headers: authB });
+  assert.equal(foreignDelete.statusCode, 404);
+
+  await app.inject({
+    method: "POST",
+    url: "/api/v1/goals",
+    headers: authA,
+    payload: { categoryId: reading.id, period: "week", targetSeconds: 3_600 },
+  });
+  const log = await app.inject({
+    method: "POST",
+    url: "/api/v1/logs",
+    headers: authA,
+    payload: {
+      idempotencyKey: crypto.randomUUID(),
+      title: "Reading",
+      startedAt: "2026-02-11T09:00:00.000Z",
+      endedAt: "2026-02-11T10:00:00.000Z",
+      categoryIds: [reading.id],
+      visibility: "private",
+    },
+  });
+  assert.equal(log.statusCode, 201);
+
+  const deleted = await app.inject({ method: "DELETE", url: `/api/v1/categories/${reading.id}`, headers: authA });
+  assert.equal(deleted.statusCode, 204);
+  const deletedAgain = await app.inject({ method: "DELETE", url: `/api/v1/categories/${reading.id}`, headers: authA });
+  assert.equal(deletedAgain.statusCode, 404);
+
+  const categories = await app.inject({ method: "GET", url: "/api/v1/categories", headers: authA });
+  assert.deepEqual(categories.json().categories.map((item: { name: string }) => item.name), ["Writing"]);
+  const goals = await app.inject({ method: "GET", url: "/api/v1/goals", headers: authA });
+  assert.deepEqual(goals.json().goals, []);
+  const remainingLog = await database.db.selectFrom("logs").select("id").where("id", "=", log.json().id).executeTakeFirst();
+  assert.ok(remainingLog, "deleting a category keeps its logs");
+});
+
 async function createAccount(app: ReturnType<typeof buildApp>, suffix: string) {
   const username = `${suffix}_${crypto.randomUUID().slice(0, 8)}`;
   const response = await app.inject({

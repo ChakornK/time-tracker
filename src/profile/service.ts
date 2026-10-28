@@ -2,7 +2,13 @@ import argon2 from "argon2";
 import type { Database } from "../db/client.js";
 import { isUniqueViolation, toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
-import type { CreateCategoryInput, CategoryResponse, UpdateEmailInput, UpdateProfileInput } from "./schemas.js";
+import type {
+  CreateCategoryInput,
+  CategoryResponse,
+  UpdateCategoryInput,
+  UpdateEmailInput,
+  UpdateProfileInput,
+} from "./schemas.js";
 import type { PublicUser } from "../auth/schemas.js";
 
 export class ProfileNotFoundError extends DomainError {
@@ -14,6 +20,12 @@ export class ProfileNotFoundError extends DomainError {
 export class CategoryConflictError extends DomainError {
   constructor() {
     super(409, "CATEGORY_CONFLICT", "Category name already exists");
+  }
+}
+
+export class CategoryNotFoundError extends DomainError {
+  constructor() {
+    super(404, "CATEGORY_NOT_FOUND", "Category not found");
   }
 }
 
@@ -114,6 +126,39 @@ export class ProfileService {
       if (isUniqueViolation(error)) throw new CategoryConflictError();
       throw error;
     }
+  }
+
+  async updateCategory(userId: string, categoryId: string, input: UpdateCategoryInput): Promise<CategoryResponse> {
+    const changes: { name?: string; color_hex?: string } = {};
+    if (input.name !== undefined) changes.name = input.name;
+    if (input.colorHex !== undefined) changes.color_hex = input.colorHex;
+
+    try {
+      const row = await this.db
+        .updateTable("categories")
+        .set(changes)
+        .where("id", "=", categoryId)
+        .where("user_id", "=", userId)
+        .returning(["id", "name", "color_hex", "created_at"])
+        .executeTakeFirst();
+
+      if (!row) throw new CategoryNotFoundError();
+      return toCategory(row);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new CategoryConflictError();
+      throw error;
+    }
+  }
+
+  /** Logs keep their time but lose the link to this category; goals for it are deleted with it. */
+  async deleteCategory(userId: string, categoryId: string): Promise<void> {
+    const result = await this.db
+      .deleteFrom("categories")
+      .where("id", "=", categoryId)
+      .where("user_id", "=", userId)
+      .executeTakeFirst();
+
+    if (result.numDeletedRows === 0n) throw new CategoryNotFoundError();
   }
 
   async listCategories(userId: string): Promise<CategoryResponse[]> {

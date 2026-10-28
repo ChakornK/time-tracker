@@ -1,7 +1,13 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { Database } from "../db/client.js";
 import { authenticate, authenticatedUserId, invalidRequest } from "../http.js";
-import { createCategorySchema, updateEmailSchema, updateProfileSchema } from "./schemas.js";
+import {
+  categoryParamsSchema,
+  createCategorySchema,
+  updateCategorySchema,
+  updateEmailSchema,
+  updateProfileSchema,
+} from "./schemas.js";
 import { ProfileService } from "./service.js";
 
 export interface ProfileRouteOptions {
@@ -41,5 +47,22 @@ export const profileRoutes: FastifyPluginAsync<ProfileRouteOptions> = async (app
 
     const category = await profiles.createCategory(authenticatedUserId(request), input.data);
     return reply.code(201).send({ category });
+  });
+
+  app.patch("/categories/:id", async (request, reply) => {
+    const params = categoryParamsSchema.safeParse(request.params);
+    if (!params.success) return invalidRequest(reply, params.error.issues);
+    const input = updateCategorySchema.safeParse(request.body);
+    if (!input.success) return invalidRequest(reply, input.error.issues);
+
+    return { category: await profiles.updateCategory(authenticatedUserId(request), params.data.id, input.data) };
+  });
+
+  app.delete("/categories/:id", async (request, reply) => {
+    const params = categoryParamsSchema.safeParse(request.params);
+    if (!params.success) return invalidRequest(reply, params.error.issues);
+
+    await profiles.deleteCategory(authenticatedUserId(request), params.data.id);
+    return reply.code(204).send();
   });
 };
