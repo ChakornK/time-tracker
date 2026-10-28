@@ -9,12 +9,12 @@ extension GoalPeriod {
         }
     }
 
-    /// How the rolling window reads in a sentence, such as "in the last 7 days".
+    /// How the calendar window reads in a sentence, such as "this week".
     var windowDescription: String {
         switch self {
         case .day: "today"
-        case .week: "in the last 7 days"
-        case .month: "in the last 30 days"
+        case .week: "this week"
+        case .month: "this month"
         }
     }
 
@@ -22,7 +22,7 @@ extension GoalPeriod {
         switch self {
         case .day: 86_400
         case .week: 7 * 86_400
-        case .month: 30 * 86_400
+        case .month: 31 * 86_400
         }
     }
 }

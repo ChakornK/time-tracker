@@ -7,17 +7,17 @@ public enum GoalPeriod: String, Codable, CaseIterable, Identifiable, Sendable {
 
     public var id: Self { self }
 
-    /// The rolling span a goal counts toward: today, the last seven days, or the last thirty days, each including today.
+    /// The calendar span a goal counts toward: today, this week, or this month. Weeks start on the
+    /// calendar's first weekday, so the locale decides between Sunday and Monday.
     public func interval(containing now: Date, calendar: Calendar = .current) -> DateInterval {
         let today = calendar.dateInterval(of: .day, for: now)
             ?? DateInterval(start: calendar.startOfDay(for: now), duration: 86_400)
-        let days = switch self {
-        case .day: 1
-        case .week: 7
-        case .month: 30
+        let component: Calendar.Component = switch self {
+        case .day: .day
+        case .week: .weekOfYear
+        case .month: .month
         }
-        let start = calendar.date(byAdding: .day, value: -(days - 1), to: today.start) ?? today.start
-        return DateInterval(start: start, end: today.end)
+        return calendar.dateInterval(of: component, for: now) ?? today
     }
 }
 

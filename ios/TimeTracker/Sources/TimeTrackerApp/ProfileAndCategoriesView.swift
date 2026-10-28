@@ -150,7 +150,7 @@ struct ProfileAndCategoriesView: View {
                             goalSheet = .edit(goal)
                         } label: {
                             // Inside the row so each goal stays its own Form row; re-evaluates each
-                            // minute so rolling windows advance without new logs.
+                            // minute so goals reset when their day, week, or month ends.
                             TimelineView(.everyMinute) { context in
                                 GoalProgressRow(
                                     progress: GoalProgress(goal: goal, logs: summaryLogs, now: context.date),
