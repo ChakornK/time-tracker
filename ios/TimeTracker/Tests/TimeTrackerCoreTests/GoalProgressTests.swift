@@ -17,6 +17,18 @@ struct GoalProgressTests {
         #expect(month.end == date("2026-02-12T00:00:00Z"))
     }
 
+    @Test func periodsStartAtLocalMidnightAcrossDaylightSavingChanges() {
+        var pacific = Calendar(identifier: .gregorian)
+        pacific.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        // US clocks spring forward on 2026-03-08, so this week holds a 23-hour day.
+        let now = date("2026-03-11T20:00:00Z")
+
+        let week = GoalPeriod.week.interval(containing: now, calendar: pacific)
+        #expect(week.start == date("2026-03-05T08:00:00Z"))
+        #expect(week.end == date("2026-03-12T07:00:00Z"))
+        #expect(week.duration == 7 * 86_400 - 3_600)
+    }
+
     @Test func countsOnlyTheGoalCategoryWithinItsPeriod() {
         let progress = GoalProgress(
             goal: goal(.week, targetSeconds: 7_200),
