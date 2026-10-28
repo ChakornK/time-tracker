@@ -51,6 +51,12 @@
 		A10000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift */; };
 		A10000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift */; };
 		A10000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift */; };
+		A10000000000000000000065 /* Sources/TimeTrackerCore/GoalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000065 /* Sources/TimeTrackerCore/GoalModels.swift */; };
+		A10000000000000000000066 /* Sources/TimeTrackerCore/GoalProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000066 /* Sources/TimeTrackerCore/GoalProgress.swift */; };
+		A10000000000000000000067 /* Sources/TimeTrackerApp/GoalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000067 /* Sources/TimeTrackerApp/GoalStore.swift */; };
+		A10000000000000000000068 /* Sources/TimeTrackerApp/GoalProgressViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000068 /* Sources/TimeTrackerApp/GoalProgressViews.swift */; };
+		A10000000000000000000069 /* Sources/TimeTrackerApp/GoalEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000069 /* Sources/TimeTrackerApp/GoalEditorSheet.swift */; };
+		A10000000000000000000070 /* Sources/TimeTrackerApp/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000070 /* Sources/TimeTrackerApp/SettingsView.swift */; };
 		CCDCD77C308F222F00DCF825 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift */; };
 		CCDCD77D308F269900DCF825 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000042 /* WidgetKit.framework */; };
 		CCDCD77E308F269900DCF825 /* WidgetKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000042 /* WidgetKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -135,6 +141,12 @@
 		B20000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/TrackedTimePieCard.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/AnalyticsView.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/ManualLogSheet.swift; sourceTree = SOURCE_ROOT; };
+		B20000000000000000000065 /* Sources/TimeTrackerCore/GoalModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/GoalModels.swift; sourceTree = SOURCE_ROOT; };
+		B20000000000000000000066 /* Sources/TimeTrackerCore/GoalProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/GoalProgress.swift; sourceTree = SOURCE_ROOT; };
+		B20000000000000000000067 /* Sources/TimeTrackerApp/GoalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/GoalStore.swift; sourceTree = SOURCE_ROOT; };
+		B20000000000000000000068 /* Sources/TimeTrackerApp/GoalProgressViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/GoalProgressViews.swift; sourceTree = SOURCE_ROOT; };
+		B20000000000000000000069 /* Sources/TimeTrackerApp/GoalEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/GoalEditorSheet.swift; sourceTree = SOURCE_ROOT; };
+		B20000000000000000000070 /* Sources/TimeTrackerApp/SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/SettingsView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -188,6 +200,12 @@
 				B20000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift */,
 				B20000000000000000000027 /* Sources/TimeTrackerCore/AccountScopedTimerStore.swift */,
 				B20000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift */,
+				B20000000000000000000065 /* Sources/TimeTrackerCore/GoalModels.swift */,
+				B20000000000000000000066 /* Sources/TimeTrackerCore/GoalProgress.swift */,
+				B20000000000000000000067 /* Sources/TimeTrackerApp/GoalStore.swift */,
+				B20000000000000000000068 /* Sources/TimeTrackerApp/GoalProgressViews.swift */,
+				B20000000000000000000069 /* Sources/TimeTrackerApp/GoalEditorSheet.swift */,
+				B20000000000000000000070 /* Sources/TimeTrackerApp/SettingsView.swift */,
 				B20000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift */,
 				B20000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift */,
 				B20000000000000000000061 /* Sources/TimeTrackerApp/CategoryBarChartCard.swift */,
@@ -342,6 +360,12 @@
 				A10000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift in Sources */,
 				A10000000000000000000027 /* Sources/TimeTrackerCore/AccountScopedTimerStore.swift in Sources */,
 				A10000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift in Sources */,
+				A10000000000000000000065 /* Sources/TimeTrackerCore/GoalModels.swift in Sources */,
+				A10000000000000000000066 /* Sources/TimeTrackerCore/GoalProgress.swift in Sources */,
+				A10000000000000000000067 /* Sources/TimeTrackerApp/GoalStore.swift in Sources */,
+				A10000000000000000000068 /* Sources/TimeTrackerApp/GoalProgressViews.swift in Sources */,
+				A10000000000000000000069 /* Sources/TimeTrackerApp/GoalEditorSheet.swift in Sources */,
+				A10000000000000000000070 /* Sources/TimeTrackerApp/SettingsView.swift in Sources */,
 				A10000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift in Sources */,
 				A10000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift in Sources */,
 				A10000000000000000000061 /* Sources/TimeTrackerApp/CategoryBarChartCard.swift in Sources */,

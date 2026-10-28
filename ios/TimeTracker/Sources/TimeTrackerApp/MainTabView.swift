@@ -31,6 +31,7 @@ struct MainTabView: View {
             userID: user.id,
             timerStore: timerStore,
             categories: CategoryStore(api: session.api, token: token),
+            goals: GoalStore(api: session.api, token: token),
             liveActivity: liveActivity,
             onAuthenticationExpired: session.expireSession
         ))
@@ -51,22 +52,31 @@ struct MainTabView: View {
             .tag(Tab.timer)
 
             NavigationStack {
-                AnalyticsView(logs: model.logs, categories: model.categories.categories)
+                AnalyticsView(logs: model.logs, categories: model.categories.categories, goals: model.goals.goals)
             }
             .tabItem { Label("Analytics", systemImage: "chart.bar") }
             .tag(Tab.analytics)
 
             NavigationStack {
                 ProfileAndCategoriesView(
-                    api: session.api,
-                    token: token,
-                    user: user,
+                    user: session.user ?? user,
+                    logs: model.logs,
                     categories: model.categories,
-                    onDisplayNameChanged: session.updateDisplayName
+                    goals: model.goals
                 )
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Sign out", action: session.signOut)
+                        NavigationLink {
+                            SettingsView(
+                                api: session.api,
+                                token: token,
+                                user: session.user ?? user,
+                                onProfileChanged: session.updateUser,
+                                onSignOut: session.signOut
+                            )
+                        } label: {
+                            Label("Settings", systemImage: "gearshape")
+                        }
                     }
                 }
             }

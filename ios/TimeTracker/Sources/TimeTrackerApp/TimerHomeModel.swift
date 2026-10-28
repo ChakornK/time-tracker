@@ -5,6 +5,7 @@ import WidgetKit
 @Observable
 final class TimerHomeModel {
     let categories: CategoryStore
+    let goals: GoalStore
     private let api: TrackerAPIClient
     private let token: String
     private let userID: UUID
@@ -31,6 +32,7 @@ final class TimerHomeModel {
         userID: UUID,
         timerStore: any TimerStoreProtocol,
         categories: CategoryStore,
+        goals: GoalStore,
         liveActivity: LiveActivityController,
         onAuthenticationExpired: @escaping () -> Void
     ) {
@@ -39,6 +41,7 @@ final class TimerHomeModel {
         self.userID = userID
         self.store = AccountScopedTimerStore(store: timerStore, userID: userID)
         self.categories = categories
+        self.goals = goals
         self.liveActivity = liveActivity
         self.onAuthenticationExpired = onAuthenticationExpired
     }
@@ -70,6 +73,7 @@ final class TimerHomeModel {
     func refreshRemoteData() async {
         await synchronize()
         await reloadCategories()
+        await reloadGoals()
     }
 
     func start(at date: Date = .now) async {
@@ -201,6 +205,16 @@ final class TimerHomeModel {
             expireSession()
         } catch {
             errorMessage = "Categories could not be refreshed."
+        }
+    }
+
+    private func reloadGoals() async {
+        do {
+            try await goals.reload()
+        } catch let error as APIClientError where error.isUnauthorized {
+            expireSession()
+        } catch {
+            errorMessage = "Goals could not be refreshed."
         }
     }
 

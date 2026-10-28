@@ -47,8 +47,8 @@ final class AuthSession {
         }
     }
 
-    func updateDisplayName(_ displayName: String) {
-        user?.displayName = displayName
+    func updateUser(_ user: APIUser) {
+        self.user = user
     }
 
     /// Loads the profile for a token restored from the keychain. Only a rejected token signs the user out;

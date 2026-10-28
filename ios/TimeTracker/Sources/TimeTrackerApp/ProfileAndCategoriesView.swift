@@ -4,48 +4,33 @@ import SwiftUI
 @Observable
 final class ProfileAndCategoriesModel {
     enum Operation {
-        case loadCategories
-        case saveProfile
+        case load
         case createCategory
+        case deleteGoal(APIGoal)
 
         var retryTitle: String {
             switch self {
-            case .loadCategories: "Retry loading categories"
-            case .saveProfile: "Retry saving profile"
+            case .load: "Retry loading"
             case .createCategory: "Retry adding category"
+            case .deleteGoal: "Retry deleting goal"
             }
         }
     }
 
     let categories: CategoryStore
-    private let api: TrackerAPIClient
-    private let token: String
-    private let onDisplayNameChanged: (String) -> Void
-    private(set) var profile: APIUser
-    private(set) var isSavingProfile = false
+    let goals: GoalStore
     private(set) var failedOperation: Operation?
     private(set) var errorMessage: String?
     private(set) var successMessage: String?
-    var displayName: String
     var categoryName = ""
 
-    init(
-        api: TrackerAPIClient,
-        token: String,
-        user: APIUser,
-        categories: CategoryStore,
-        onDisplayNameChanged: @escaping (String) -> Void
-    ) {
-        self.api = api
-        self.token = token
+    init(categories: CategoryStore, goals: GoalStore) {
         self.categories = categories
-        self.onDisplayNameChanged = onDisplayNameChanged
-        profile = user
-        displayName = user.displayName
+        self.goals = goals
     }
 
     var isBusy: Bool {
-        categories.isLoading || categories.isCreating || isSavingProfile
+        categories.isLoading || categories.isCreating || goals.isLoading || goals.isSaving
     }
 
     var canAddCategory: Bool {
@@ -56,31 +41,13 @@ final class ProfileAndCategoriesModel {
         categoryName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func loadCategories() async {
+    func load() async {
         beginOperation()
         do {
             try await categories.reload()
+            try await goals.reload()
         } catch {
-            fail(.loadCategories, "Categories could not be loaded. Check your connection and try again.")
-        }
-    }
-
-    func saveProfile() async {
-        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            errorMessage = "Display name cannot be empty."
-            return
-        }
-        beginOperation()
-        isSavingProfile = true
-        defer { isSavingProfile = false }
-        do {
-            profile = try await api.updateProfile(displayName: trimmed, accessToken: token)
-            displayName = profile.displayName
-            onDisplayNameChanged(profile.displayName)
-            successMessage = "Profile saved."
-        } catch {
-            fail(.saveProfile, "Profile could not be saved. Check your connection and try again.")
+            fail(.load, "Goals and categories could not be loaded. Check your connection and try again.")
         }
     }
 
@@ -102,11 +69,20 @@ final class ProfileAndCategoriesModel {
         }
     }
 
+    func delete(_ goal: APIGoal) async {
+        beginOperation()
+        do {
+            try await goals.delete(goal)
+        } catch {
+            fail(.deleteGoal(goal), "Goal could not be deleted. Check your connection and try again.")
+        }
+    }
+
     func retryFailedOperation() async {
         switch failedOperation {
-        case .loadCategories: await loadCategories()
-        case .saveProfile: await saveProfile()
+        case .load: await load()
         case .createCategory: await addCategory()
+        case .deleteGoal(let goal): await delete(goal)
         case nil: break
         }
     }
@@ -124,36 +100,76 @@ final class ProfileAndCategoriesModel {
 }
 
 struct ProfileAndCategoriesView: View {
-    @State private var model: ProfileAndCategoriesModel
+    private enum GoalSheet: Identifiable {
+        case create
+        case edit(APIGoal)
 
-    init(
-        api: TrackerAPIClient,
-        token: String,
-        user: APIUser,
-        categories: CategoryStore,
-        onDisplayNameChanged: @escaping (String) -> Void
-    ) {
-        _model = State(initialValue: ProfileAndCategoriesModel(
-            api: api,
-            token: token,
-            user: user,
-            categories: categories,
-            onDisplayNameChanged: onDisplayNameChanged
-        ))
+        var id: String {
+            switch self {
+            case .create: "create"
+            case .edit(let goal): goal.id.uuidString
+            }
+        }
+    }
+
+    let user: APIUser
+    let logs: [LocalActivityLog]
+    @State private var model: ProfileAndCategoriesModel
+    @State private var goalSheet: GoalSheet?
+
+    init(user: APIUser, logs: [LocalActivityLog], categories: CategoryStore, goals: GoalStore) {
+        self.user = user
+        self.logs = logs
+        _model = State(initialValue: ProfileAndCategoriesModel(categories: categories, goals: goals))
     }
 
     var body: some View {
+        let colors = CategoryColorResolver(categories: model.categories.categories)
+        let summaryLogs = logs.map(\.productivitySummaryLog)
+
         Form {
-            Section("Profile") {
-                LabeledContent("Username", value: "@\(model.profile.username)")
-                LabeledContent("Email", value: model.profile.email)
-                TextField("Display name", text: $model.displayName)
-                    .textContentType(.name)
-                    .submitLabel(.done)
-                Button(model.isSavingProfile ? "Saving" : "Save display name") {
-                    Task { await model.saveProfile() }
+            Section {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(user.displayName)
+                        .font(.title3.weight(.semibold))
+                    Text("@\(user.username)")
+                        .foregroundStyle(.secondary)
                 }
-                .disabled(model.isSavingProfile)
+                .padding(.vertical, 4)
+            }
+
+            Section("Goals") {
+                if model.goals.isLoading && model.goals.goals.isEmpty {
+                    ProgressView("Loading goals")
+                } else if model.goals.goals.isEmpty {
+                    Text("Set a goal for how much time you want to spend on a category each day, week, or month.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    // Re-evaluates each minute so rolling windows advance without new logs.
+                    TimelineView(.everyMinute) { context in
+                        ForEach(model.goals.goals) { goal in
+                            Button {
+                                goalSheet = .edit(goal)
+                            } label: {
+                                GoalProgressRow(
+                                    progress: GoalProgress(goal: goal, logs: summaryLogs, now: context.date),
+                                    series: colors.series(for: goal.categoryId)
+                                )
+                            }
+                            .tint(.primary)
+                            .swipeActions {
+                                Button("Delete", role: .destructive) {
+                                    Task { await model.delete(goal) }
+                                }
+                            }
+                        }
+                    }
+                }
+                Button("Add goal", systemImage: "plus") {
+                    goalSheet = .create
+                }
+                .frame(minHeight: 44)
+                .disabled(model.categories.categories.isEmpty)
             }
 
             Section("Categories") {
@@ -208,7 +224,15 @@ struct ProfileAndCategoriesView: View {
             }
         }
         .navigationTitle("Profile")
-        .task { await model.loadCategories() }
+        .task { await model.load() }
+        .sheet(item: $goalSheet) { sheet in
+            switch sheet {
+            case .create:
+                GoalEditorSheet(goals: model.goals, categories: model.categories.categories)
+            case .edit(let goal):
+                GoalEditorSheet(goals: model.goals, categories: model.categories.categories, editing: goal)
+            }
+        }
     }
 }
 
