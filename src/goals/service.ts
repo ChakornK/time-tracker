@@ -1,5 +1,5 @@
 import type { Database } from "../db/client.js";
-import { isUniqueViolation, toDate } from "../db/utils.js";
+import { isForeignKeyViolation, isUniqueViolation, toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
 import type { CreateGoalInput, GoalPeriod, GoalResponse, UpdateGoalInput } from "./schemas.js";
 
@@ -62,6 +62,8 @@ export class GoalService {
       return toGoal(row);
     } catch (error) {
       if (isUniqueViolation(error)) throw new GoalConflictError();
+      // The category was deleted between the ownership check and the insert.
+      if (isForeignKeyViolation(error)) throw new GoalCategoryNotFoundError();
       throw error;
     }
   }

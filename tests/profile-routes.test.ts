@@ -126,6 +126,9 @@ test("changing email requires the current password and a free address", async (t
   assert.equal(taken.statusCode, 409);
   assert.equal(taken.json().error.code, "EMAIL_CONFLICT");
 
+  const unchanged = await app.inject({ method: "GET", url: "/api/v1/me", headers });
+  assert.equal(unchanged.json().user.email, userA.email);
+
   const changed = await app.inject({
     method: "PATCH",
     url: "/api/v1/me/email",
