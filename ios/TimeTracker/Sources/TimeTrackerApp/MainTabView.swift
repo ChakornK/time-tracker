@@ -63,7 +63,7 @@ struct MainTabView: View {
                     logs: model.logs,
                     categories: model.categories,
                     goals: model.goals,
-                    categoryIDsAwaitingSync: model.categoryIDsAwaitingSync,
+                    isCategoryAwaitingSync: { [model] in model.categoryIDsAwaitingSync.contains($0) },
                     onCategoryDeleted: model.categoryWasDeleted
                 )
                 .toolbar {

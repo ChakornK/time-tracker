@@ -23,16 +23,33 @@ final class ProfileAndCategoriesModel {
 
     let categories: CategoryStore
     let goals: GoalStore
+    private let isCategoryAwaitingSync: (UUID) -> Bool
     private let onCategoryDeleted: (UUID) -> Void
     private(set) var failedOperation: Operation?
     private(set) var errorMessage: String?
     private(set) var successMessage: String?
     var categoryName = ""
 
-    init(categories: CategoryStore, goals: GoalStore, onCategoryDeleted: @escaping (UUID) -> Void) {
+    init(
+        categories: CategoryStore,
+        goals: GoalStore,
+        isCategoryAwaitingSync: @escaping (UUID) -> Bool,
+        onCategoryDeleted: @escaping (UUID) -> Void
+    ) {
         self.categories = categories
         self.goals = goals
+        self.isCategoryAwaitingSync = isCategoryAwaitingSync
         self.onCategoryDeleted = onCategoryDeleted
+    }
+
+    /// Checked before confirming and again before deleting, since a timer can start in between.
+    func canDelete(_ category: APICategory) -> Bool {
+        guard !isCategoryAwaitingSync(category.id) else {
+            beginOperation()
+            errorMessage = "\(category.name) is used by a running timer or a log that hasn't synced yet. Stop the timer and let logs sync, then try again."
+            return false
+        }
+        return true
     }
 
     var isBusy: Bool {
@@ -90,6 +107,7 @@ final class ProfileAndCategoriesModel {
     }
 
     func delete(_ category: APICategory) async {
+        guard canDelete(category) else { return }
         beginOperation()
         do {
             try await categories.delete(category)
@@ -98,11 +116,6 @@ final class ProfileAndCategoriesModel {
         } catch {
             fail(.deleteCategory(category), "Category could not be deleted. Check your connection and try again.")
         }
-    }
-
-    func blockDeletion(of category: APICategory) {
-        beginOperation()
-        errorMessage = "\(category.name) is used by a running timer or a log that hasn't synced yet. Stop the timer and let logs sync, then try again."
     }
 
     func delete(_ goal: APIGoal) async {
@@ -152,7 +165,6 @@ struct ProfileAndCategoriesView: View {
 
     let user: APIUser
     let logs: [LocalActivityLog]
-    let categoryIDsAwaitingSync: Set<UUID>
     @State private var model: ProfileAndCategoriesModel
     @State private var goalSheet: GoalSheet?
     @State private var renamingCategory: APICategory?
@@ -164,15 +176,15 @@ struct ProfileAndCategoriesView: View {
         logs: [LocalActivityLog],
         categories: CategoryStore,
         goals: GoalStore,
-        categoryIDsAwaitingSync: Set<UUID>,
+        isCategoryAwaitingSync: @escaping (UUID) -> Bool,
         onCategoryDeleted: @escaping (UUID) -> Void
     ) {
         self.user = user
         self.logs = logs
-        self.categoryIDsAwaitingSync = categoryIDsAwaitingSync
         _model = State(initialValue: ProfileAndCategoriesModel(
             categories: categories,
             goals: goals,
+            isCategoryAwaitingSync: isCategoryAwaitingSync,
             onCategoryDeleted: onCategoryDeleted
         ))
     }
@@ -353,9 +365,7 @@ struct ProfileAndCategoriesView: View {
     }
 
     private func requestDeletion(of category: APICategory) {
-        if categoryIDsAwaitingSync.contains(category.id) {
-            model.blockDeletion(of: category)
-        } else {
+        if model.canDelete(category) {
             deletingCategory = category
         }
     }
