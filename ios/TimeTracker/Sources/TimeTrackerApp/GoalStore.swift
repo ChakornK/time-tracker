@@ -36,6 +36,8 @@ final class GoalStore {
         isSaving = true
         defer { isSaving = false }
         let goal = try await api.createGoal(categoryID: categoryID, period: period, targetSeconds: targetSeconds, accessToken: token)
+        // A reload that finished mid-request may already hold the new goal.
+        goals.removeAll { $0.id == goal.id }
         goals.append(goal)
         revision += 1
     }
