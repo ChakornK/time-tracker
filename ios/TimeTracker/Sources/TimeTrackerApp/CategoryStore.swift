@@ -33,4 +33,20 @@ final class CategoryStore {
         categories.append(category)
         return category
     }
+
+    func rename(_ category: APICategory, to name: String) async throws {
+        let renamed = try await api.renameCategory(id: category.id, to: name, accessToken: token)
+        if let index = categories.firstIndex(where: { $0.id == category.id }) {
+            categories[index] = renamed
+        }
+    }
+
+    func delete(_ category: APICategory) async throws {
+        do {
+            try await api.deleteCategory(id: category.id, accessToken: token)
+        } catch APIClientError.server(404, _) {
+            // Already deleted, for example from another device.
+        }
+        categories.removeAll { $0.id == category.id }
+    }
 }

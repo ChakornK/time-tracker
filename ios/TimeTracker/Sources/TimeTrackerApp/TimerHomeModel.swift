@@ -50,6 +50,23 @@ final class TimerHomeModel {
         logs.count { $0.syncState != .synced }
     }
 
+    /// Categories that a running timer or an unsynced log still references. The server rejects
+    /// logs with unknown categories, so deleting one of these would leave a log that never syncs.
+    var categoryIDsAwaitingSync: Set<UUID> {
+        var ids = Set(runningTimer?.categoryIDs ?? [])
+        for log in logs where log.syncState != .synced {
+            ids.formUnion(log.categoryIDs)
+        }
+        return ids
+    }
+
+    func categoryWasDeleted(_ categoryID: UUID) {
+        goals.removeGoals(forCategoryID: categoryID)
+        if selectedCategoryID == categoryID {
+            selectedCategoryID = categories.categories.first?.id
+        }
+    }
+
     var canStart: Bool {
         categories.category(withID: selectedCategoryID) != nil && !categories.isCreating
     }

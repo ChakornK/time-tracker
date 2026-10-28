@@ -6,12 +6,16 @@ final class ProfileAndCategoriesModel {
     enum Operation {
         case load
         case createCategory
+        case renameCategory(APICategory, String)
+        case deleteCategory(APICategory)
         case deleteGoal(APIGoal)
 
         var retryTitle: String {
             switch self {
             case .load: "Retry loading"
             case .createCategory: "Retry adding category"
+            case .renameCategory: "Retry renaming category"
+            case .deleteCategory: "Retry deleting category"
             case .deleteGoal: "Retry deleting goal"
             }
         }
@@ -19,14 +23,16 @@ final class ProfileAndCategoriesModel {
 
     let categories: CategoryStore
     let goals: GoalStore
+    private let onCategoryDeleted: (UUID) -> Void
     private(set) var failedOperation: Operation?
     private(set) var errorMessage: String?
     private(set) var successMessage: String?
     var categoryName = ""
 
-    init(categories: CategoryStore, goals: GoalStore) {
+    init(categories: CategoryStore, goals: GoalStore, onCategoryDeleted: @escaping (UUID) -> Void) {
         self.categories = categories
         self.goals = goals
+        self.onCategoryDeleted = onCategoryDeleted
     }
 
     var isBusy: Bool {
@@ -69,6 +75,36 @@ final class ProfileAndCategoriesModel {
         }
     }
 
+    func rename(_ category: APICategory, to newName: String) async {
+        let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name != category.name else { return }
+        beginOperation()
+        do {
+            try await categories.rename(category, to: name)
+            successMessage = "Category renamed."
+        } catch ProfileClientError.duplicateCategory {
+            fail(.renameCategory(category, name), "A category with that name already exists.")
+        } catch {
+            fail(.renameCategory(category, name), "Category could not be renamed. Check your connection and try again.")
+        }
+    }
+
+    func delete(_ category: APICategory) async {
+        beginOperation()
+        do {
+            try await categories.delete(category)
+            onCategoryDeleted(category.id)
+            successMessage = "Category deleted."
+        } catch {
+            fail(.deleteCategory(category), "Category could not be deleted. Check your connection and try again.")
+        }
+    }
+
+    func blockDeletion(of category: APICategory) {
+        beginOperation()
+        errorMessage = "\(category.name) is used by a running timer or a log that hasn't synced yet. Stop the timer and let logs sync, then try again."
+    }
+
     func delete(_ goal: APIGoal) async {
         beginOperation()
         do {
@@ -82,6 +118,8 @@ final class ProfileAndCategoriesModel {
         switch failedOperation {
         case .load: await load()
         case .createCategory: await addCategory()
+        case .renameCategory(let category, let name): await rename(category, to: name)
+        case .deleteCategory(let category): await delete(category)
         case .deleteGoal(let goal): await delete(goal)
         case nil: break
         }
@@ -114,13 +152,29 @@ struct ProfileAndCategoriesView: View {
 
     let user: APIUser
     let logs: [LocalActivityLog]
+    let categoryIDsAwaitingSync: Set<UUID>
     @State private var model: ProfileAndCategoriesModel
     @State private var goalSheet: GoalSheet?
+    @State private var renamingCategory: APICategory?
+    @State private var renameText = ""
+    @State private var deletingCategory: APICategory?
 
-    init(user: APIUser, logs: [LocalActivityLog], categories: CategoryStore, goals: GoalStore) {
+    init(
+        user: APIUser,
+        logs: [LocalActivityLog],
+        categories: CategoryStore,
+        goals: GoalStore,
+        categoryIDsAwaitingSync: Set<UUID>,
+        onCategoryDeleted: @escaping (UUID) -> Void
+    ) {
         self.user = user
         self.logs = logs
-        _model = State(initialValue: ProfileAndCategoriesModel(categories: categories, goals: goals))
+        self.categoryIDsAwaitingSync = categoryIDsAwaitingSync
+        _model = State(initialValue: ProfileAndCategoriesModel(
+            categories: categories,
+            goals: goals,
+            onCategoryDeleted: onCategoryDeleted
+        ))
     }
 
     var body: some View {
@@ -160,7 +214,19 @@ struct ProfileAndCategoriesView: View {
                         }
                         .tint(.primary)
                         .swipeActions {
-                            Button("Delete", role: .destructive) {
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                Task { await model.delete(goal) }
+                            }
+                            Button("Edit", systemImage: "pencil") {
+                                goalSheet = .edit(goal)
+                            }
+                            .tint(.orange)
+                        }
+                        .contextMenu {
+                            Button("Edit", systemImage: "pencil") {
+                                goalSheet = .edit(goal)
+                            }
+                            Button("Delete", systemImage: "trash", role: .destructive) {
                                 Task { await model.delete(goal) }
                             }
                         }
@@ -190,6 +256,23 @@ struct ProfileAndCategoriesView: View {
                                 .frame(width: 12, height: 12)
                                 .accessibilityHidden(true)
                             Text(category.name)
+                        }
+                        .swipeActions {
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                requestDeletion(of: category)
+                            }
+                            Button("Rename", systemImage: "pencil") {
+                                beginRenaming(category)
+                            }
+                            .tint(.orange)
+                        }
+                        .contextMenu {
+                            Button("Rename", systemImage: "pencil") {
+                                beginRenaming(category)
+                            }
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                requestDeletion(of: category)
+                            }
                         }
                     }
                 }
@@ -226,6 +309,26 @@ struct ProfileAndCategoriesView: View {
         }
         .navigationTitle("Profile")
         .task { await model.load() }
+        .alert("Rename category", isPresented: isRenaming, presenting: renamingCategory) { category in
+            TextField("Category name", text: $renameText)
+                .textInputAutocapitalization(.words)
+            Button("Cancel", role: .cancel) {}
+            Button("Save") {
+                Task { await model.rename(category, to: renameText) }
+            }
+        }
+        .confirmationDialog(
+            deletingCategory.map { "Delete \($0.name)?" } ?? "",
+            isPresented: isConfirmingDeletion,
+            titleVisibility: .visible,
+            presenting: deletingCategory
+        ) { category in
+            Button("Delete category", role: .destructive) {
+                Task { await model.delete(category) }
+            }
+        } message: { _ in
+            Text("Its goals are deleted too. Logged time is kept but no longer belongs to a category.")
+        }
         .sheet(item: $goalSheet) { sheet in
             switch sheet {
             case .create:
@@ -233,6 +336,27 @@ struct ProfileAndCategoriesView: View {
             case .edit(let goal):
                 GoalEditorSheet(goals: model.goals, categories: model.categories.categories, editing: goal)
             }
+        }
+    }
+
+    private var isRenaming: Binding<Bool> {
+        Binding(get: { renamingCategory != nil }, set: { if !$0 { renamingCategory = nil } })
+    }
+
+    private var isConfirmingDeletion: Binding<Bool> {
+        Binding(get: { deletingCategory != nil }, set: { if !$0 { deletingCategory = nil } })
+    }
+
+    private func beginRenaming(_ category: APICategory) {
+        renameText = category.name
+        renamingCategory = category
+    }
+
+    private func requestDeletion(of category: APICategory) {
+        if categoryIDsAwaitingSync.contains(category.id) {
+            model.blockDeletion(of: category)
+        } else {
+            deletingCategory = category
         }
     }
 }

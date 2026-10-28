@@ -52,6 +52,12 @@ final class GoalStore {
         revision += 1
     }
 
+    /// Drops goals the server deleted along with their category.
+    func removeGoals(forCategoryID categoryID: UUID) {
+        goals.removeAll { $0.categoryId == categoryID }
+        revision += 1
+    }
+
     func delete(_ goal: APIGoal) async throws {
         do {
             try await api.deleteGoal(id: goal.id, accessToken: token)

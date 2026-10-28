@@ -62,7 +62,9 @@ struct MainTabView: View {
                     user: session.user ?? user,
                     logs: model.logs,
                     categories: model.categories,
-                    goals: model.goals
+                    goals: model.goals,
+                    categoryIDsAwaitingSync: model.categoryIDsAwaitingSync,
+                    onCategoryDeleted: model.categoryWasDeleted
                 )
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
