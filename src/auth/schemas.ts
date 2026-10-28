@@ -6,12 +6,12 @@ const usernameSchema = z.string({ error: "Enter a username." })
   .max(50, "Username must be 50 characters or fewer.");
 const displayNameSchema = z.string().trim().max(100, "Display name must be 100 characters or fewer.");
 // At least one character before the @ and a provider domain after it, such as name@gmail.com.
-const emailSchema = z.string({ error: "Enter an email address." })
+export const emailSchema = z.string({ error: "Enter an email address." })
   .trim()
   .max(255, "Email must be 255 characters or fewer.")
   .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter an email address like name@gmail.com.")
   .transform((email) => email.toLowerCase());
-const passwordSchema = z.string({ error: "Enter a password." })
+export const passwordSchema = z.string({ error: "Enter a password." })
   .min(1, "Enter a password.")
   .max(128, "Password must be 128 characters or fewer.");
 

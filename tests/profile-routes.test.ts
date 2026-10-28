@@ -80,6 +80,62 @@ test("profiles and categories are scoped to the authenticated user", async (t) =
   assert.deepEqual(categoriesB.json().categories, []);
 });
 
+test("changing email requires the current password and a free address", async (t) => {
+  const database = createDatabase(config);
+  const app = buildApp({ config, db: database.db, logger: false });
+  await app.ready();
+  const registeredUsers: string[] = [];
+
+  t.after(async () => {
+    if (registeredUsers.length) {
+      await database.db.deleteFrom("users").where("id", "in", registeredUsers).execute();
+    }
+    await app.close();
+    await database.close();
+  });
+
+  const userA = await createAccount(app, "email_a");
+  const userB = await createAccount(app, "email_b");
+  registeredUsers.push(userA.id, userB.id);
+  const headers = { authorization: `Bearer ${userA.token}` };
+  const newEmail = `email_${crypto.randomUUID().slice(0, 8)}@example.test`;
+
+  const wrongPassword = await app.inject({
+    method: "PATCH",
+    url: "/api/v1/me/email",
+    headers,
+    payload: { email: newEmail, currentPassword: "not the password" },
+  });
+  assert.equal(wrongPassword.statusCode, 403);
+  assert.equal(wrongPassword.json().error.code, "INCORRECT_PASSWORD");
+
+  const invalid = await app.inject({
+    method: "PATCH",
+    url: "/api/v1/me/email",
+    headers,
+    payload: { email: "not-an-email", currentPassword: "correct horse battery staple" },
+  });
+  assert.equal(invalid.statusCode, 400);
+
+  const taken = await app.inject({
+    method: "PATCH",
+    url: "/api/v1/me/email",
+    headers,
+    payload: { email: userB.email.toUpperCase(), currentPassword: "correct horse battery staple" },
+  });
+  assert.equal(taken.statusCode, 409);
+  assert.equal(taken.json().error.code, "EMAIL_CONFLICT");
+
+  const changed = await app.inject({
+    method: "PATCH",
+    url: "/api/v1/me/email",
+    headers,
+    payload: { email: newEmail.toUpperCase(), currentPassword: "correct horse battery staple" },
+  });
+  assert.equal(changed.statusCode, 200);
+  assert.equal(changed.json().user.email, newEmail);
+});
+
 async function createAccount(app: ReturnType<typeof buildApp>, suffix: string) {
   const username = `${suffix}_${crypto.randomUUID().slice(0, 8)}`;
   const response = await app.inject({
@@ -101,5 +157,9 @@ async function createAccount(app: ReturnType<typeof buildApp>, suffix: string) {
   });
   assert.equal(login.statusCode, 200);
 
-  return { id: response.json().user.id as string, token: login.json().accessToken as string };
+  return {
+    id: response.json().user.id as string,
+    email: response.json().user.email as string,
+    token: login.json().accessToken as string,
+  };
 }

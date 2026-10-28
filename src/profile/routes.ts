@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { Database } from "../db/client.js";
 import { authenticate, authenticatedUserId, invalidRequest } from "../http.js";
-import { createCategorySchema, updateProfileSchema } from "./schemas.js";
+import { createCategorySchema, updateEmailSchema, updateProfileSchema } from "./schemas.js";
 import { ProfileService } from "./service.js";
 
 export interface ProfileRouteOptions {
@@ -22,6 +22,13 @@ export const profileRoutes: FastifyPluginAsync<ProfileRouteOptions> = async (app
     if (!input.success) return invalidRequest(reply, input.error.issues);
 
     return { user: await profiles.updateProfile(authenticatedUserId(request), input.data) };
+  });
+
+  app.patch("/me/email", async (request, reply) => {
+    const input = updateEmailSchema.safeParse(request.body);
+    if (!input.success) return invalidRequest(reply, input.error.issues);
+
+    return { user: await profiles.updateEmail(authenticatedUserId(request), input.data) };
   });
 
   app.get("/categories", async (request) => ({

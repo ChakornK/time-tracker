@@ -1,7 +1,8 @@
+import argon2 from "argon2";
 import type { Database } from "../db/client.js";
 import { isUniqueViolation, toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
-import type { CreateCategoryInput, CategoryResponse, UpdateProfileInput } from "./schemas.js";
+import type { CreateCategoryInput, CategoryResponse, UpdateEmailInput, UpdateProfileInput } from "./schemas.js";
 import type { PublicUser } from "../auth/schemas.js";
 
 export class ProfileNotFoundError extends DomainError {
@@ -16,8 +17,31 @@ export class CategoryConflictError extends DomainError {
   }
 }
 
+export class EmailConflictError extends DomainError {
+  constructor() {
+    super(409, "EMAIL_CONFLICT", "Email is already in use");
+  }
+}
+
+export class IncorrectPasswordError extends DomainError {
+  constructor() {
+    super(403, "INCORRECT_PASSWORD", "Current password is incorrect");
+  }
+}
+
+export interface ProfileServiceOptions {
+  passwordHasher?: Pick<typeof argon2, "verify">;
+}
+
 export class ProfileService {
-  constructor(private readonly db: Database) {}
+  private readonly passwordHasher: Pick<typeof argon2, "verify">;
+
+  constructor(
+    private readonly db: Database,
+    options: ProfileServiceOptions = {},
+  ) {
+    this.passwordHasher = options.passwordHasher ?? argon2;
+  }
 
   async getProfile(userId: string): Promise<PublicUser> {
     const row = await this.db
@@ -44,6 +68,33 @@ export class ProfileService {
 
     if (!row) throw new ProfileNotFoundError();
     return toPublicUser(row);
+  }
+
+  async updateEmail(userId: string, input: UpdateEmailInput): Promise<PublicUser> {
+    const credentials = await this.db
+      .selectFrom("users")
+      .select("password_hash")
+      .where("id", "=", userId)
+      .executeTakeFirst();
+    if (!credentials) throw new ProfileNotFoundError();
+    if (!(await this.passwordHasher.verify(credentials.password_hash, input.currentPassword))) {
+      throw new IncorrectPasswordError();
+    }
+
+    try {
+      const row = await this.db
+        .updateTable("users")
+        .set({ email: input.email })
+        .where("id", "=", userId)
+        .returning(["id", "username", "display_name", "email", "avatar_url", "created_at"])
+        .executeTakeFirst();
+
+      if (!row) throw new ProfileNotFoundError();
+      return toPublicUser(row);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new EmailConflictError();
+      throw error;
+    }
   }
 
   async createCategory(userId: string, input: CreateCategoryInput): Promise<CategoryResponse> {
