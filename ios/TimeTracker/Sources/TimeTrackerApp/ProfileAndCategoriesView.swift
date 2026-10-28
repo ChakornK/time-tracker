@@ -145,22 +145,23 @@ struct ProfileAndCategoriesView: View {
                     Text("Set a goal for how much time you want to spend on a category each day, week, or month.")
                         .foregroundStyle(.secondary)
                 } else {
-                    // Re-evaluates each minute so rolling windows advance without new logs.
-                    TimelineView(.everyMinute) { context in
-                        ForEach(model.goals.goals) { goal in
-                            Button {
-                                goalSheet = .edit(goal)
-                            } label: {
+                    ForEach(model.goals.goals) { goal in
+                        Button {
+                            goalSheet = .edit(goal)
+                        } label: {
+                            // Inside the row so each goal stays its own Form row; re-evaluates each
+                            // minute so rolling windows advance without new logs.
+                            TimelineView(.everyMinute) { context in
                                 GoalProgressRow(
                                     progress: GoalProgress(goal: goal, logs: summaryLogs, now: context.date),
                                     series: colors.series(for: goal.categoryId)
                                 )
                             }
-                            .tint(.primary)
-                            .swipeActions {
-                                Button("Delete", role: .destructive) {
-                                    Task { await model.delete(goal) }
-                                }
+                        }
+                        .tint(.primary)
+                        .swipeActions {
+                            Button("Delete", role: .destructive) {
+                                Task { await model.delete(goal) }
                             }
                         }
                     }

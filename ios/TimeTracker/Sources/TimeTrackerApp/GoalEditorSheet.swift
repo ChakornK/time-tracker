@@ -22,7 +22,16 @@ struct GoalEditorSheet: View {
             ?? categories.first { goals.goal(for: $0.id, period: period) == nil }?.id)
         let target = editing?.targetSeconds ?? 5 * 3_600
         _hours = State(initialValue: target / 3_600)
-        _minutes = State(initialValue: (target % 3_600) / 60 / 5 * 5)
+        _minutes = State(initialValue: (target % 3_600) / 60)
+    }
+
+    private var maximumHours: Int {
+        period.maximumSeconds / 3_600
+    }
+
+    /// Five-minute steps, plus an existing goal's own minute value so editing never changes it silently.
+    private var minuteValues: [Int] {
+        Set(stride(from: 0, to: 60, by: 5)).union([minutes]).sorted()
     }
 
     private var targetSeconds: Int {
@@ -38,7 +47,7 @@ struct GoalEditorSheet: View {
     private var targetProblem: String? {
         if targetSeconds == 0 { return "Set a target above zero." }
         if targetSeconds > period.maximumSeconds {
-            return "A \(period.adjective.lowercased()) goal can be at most \(period.maximumSeconds / 3_600) hours."
+            return "A \(period.adjective.lowercased()) goal can be at most \(maximumHours) hours."
         }
         return nil
     }
@@ -74,8 +83,8 @@ struct GoalEditorSheet: View {
 
                 Section {
                     HStack(spacing: 0) {
-                        durationWheel("Hours", selection: $hours, values: Array(0...(period.maximumSeconds / 3_600)), unit: "hr")
-                        durationWheel("Minutes", selection: $minutes, values: Array(stride(from: 0, to: 60, by: 5)), unit: "min")
+                        durationWheel("Hours", selection: $hours, values: Array(0...maximumHours), unit: "hr")
+                        durationWheel("Minutes", selection: $minutes, values: minuteValues, unit: "min")
                     }
                     .frame(height: 130)
                 } header: {
@@ -106,6 +115,7 @@ struct GoalEditorSheet: View {
             }
             .onChange(of: period) {
                 errorMessage = nil
+                hours = min(hours, maximumHours)
                 if !availableCategories.contains(where: { $0.id == categoryID }) {
                     categoryID = availableCategories.first?.id
                 }

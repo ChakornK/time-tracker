@@ -9,6 +9,8 @@ final class GoalStore {
     private(set) var goals: [APIGoal] = []
     private(set) var isLoading = false
     private(set) var isSaving = false
+    /// Bumped by every local change, so a reload that started before one doesn't overwrite it.
+    private var revision = 0
 
     init(api: TrackerAPIClient, token: String) {
         self.api = api
@@ -23,7 +25,11 @@ final class GoalStore {
         guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        goals = try await api.goals(accessToken: token)
+        let startRevision = revision
+        let loaded = try await api.goals(accessToken: token)
+        if revision == startRevision {
+            goals = loaded
+        }
     }
 
     func create(categoryID: UUID, period: GoalPeriod, targetSeconds: Int) async throws {
@@ -31,6 +37,7 @@ final class GoalStore {
         defer { isSaving = false }
         let goal = try await api.createGoal(categoryID: categoryID, period: period, targetSeconds: targetSeconds, accessToken: token)
         goals.append(goal)
+        revision += 1
     }
 
     func update(_ goal: APIGoal, targetSeconds: Int) async throws {
@@ -40,6 +47,7 @@ final class GoalStore {
         if let index = goals.firstIndex(where: { $0.id == goal.id }) {
             goals[index] = updated
         }
+        revision += 1
     }
 
     func delete(_ goal: APIGoal) async throws {
@@ -49,5 +57,6 @@ final class GoalStore {
             // Already deleted, for example from another device.
         }
         goals.removeAll { $0.id == goal.id }
+        revision += 1
     }
 }
