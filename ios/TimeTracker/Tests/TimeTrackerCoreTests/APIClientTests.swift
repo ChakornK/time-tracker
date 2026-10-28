@@ -99,6 +99,45 @@ struct APIClientTests {
         }
     }
 
+    @Test func renameCategorySendsNameAndMapsConflict() async throws {
+        let categoryID = UUID()
+        let body = Data("""
+        {"category":{"id":"\(categoryID)","name":"Books","colorHex":"#4A6C45","createdAt":"2026-02-08T12:00:00Z"}}
+        """.utf8)
+        let session = stubbedSession { request in
+            #expect(request.httpMethod == "PATCH")
+            #expect(request.url?.path == "/api/v1/categories/\(categoryID.uuidString)")
+            let requestBody = try #require(requestBodyData(request))
+            let payload = try #require(JSONSerialization.jsonObject(with: requestBody) as? [String: String])
+            #expect(payload == ["name": "Books"])
+            return response(body: body, statusCode: 200)
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+        let category = try await client.renameCategory(id: categoryID, to: "Books", accessToken: "access-token")
+        #expect(category.name == "Books")
+
+        let conflict = Data(#"{"error":{"code":"CATEGORY_CONFLICT","message":"exists"}}"#.utf8)
+        let conflictClient = TrackerAPIClient(
+            baseURL: URL(string: "https://tracker.example.test")!,
+            session: stubbedSession { _ in response(body: conflict, statusCode: 409) }
+        )
+        await #expect(throws: ProfileClientError.duplicateCategory) {
+            try await conflictClient.renameCategory(id: categoryID, to: "Writing", accessToken: "access-token")
+        }
+    }
+
+    @Test func deleteCategoryUsesCategoryPath() async throws {
+        let categoryID = UUID()
+        let session = stubbedSession { request in
+            #expect(request.httpMethod == "DELETE")
+            #expect(request.url?.path == "/api/v1/categories/\(categoryID.uuidString)")
+            return response(body: Data(), statusCode: 204)
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+
+        try await client.deleteCategory(id: categoryID, accessToken: "access-token")
+    }
+
     @Test func createGoalSendsPayloadAndDecodesGoal() async throws {
         let goalID = UUID()
         let categoryID = UUID()

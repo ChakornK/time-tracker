@@ -161,6 +161,25 @@ public struct TrackerAPIClient: Sendable {
         }
     }
 
+    public func renameCategory(id: UUID, to name: String, accessToken: String) async throws -> APICategory {
+        let request = try makeRequest(
+            .patch,
+            "categories/\(id.uuidString)",
+            body: UpdateCategoryPayload(name: name),
+            token: accessToken
+        )
+        do {
+            let envelope: CategoryEnvelope = try await send(request)
+            return envelope.category
+        } catch APIClientError.server(_, "CATEGORY_CONFLICT") {
+            throw ProfileClientError.duplicateCategory
+        }
+    }
+
+    public func deleteCategory(id: UUID, accessToken: String) async throws {
+        _ = try await perform(makeRequest(.delete, "categories/\(id.uuidString)", token: accessToken))
+    }
+
     // MARK: Goals
 
     public func goals(accessToken: String) async throws -> [APIGoal] {

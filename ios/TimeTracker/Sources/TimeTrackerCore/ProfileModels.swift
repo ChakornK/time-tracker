@@ -59,3 +59,7 @@ struct CreateCategoryPayload: Encodable {
     let name: String
     let colorHex: String?
 }
+
+struct UpdateCategoryPayload: Encodable {
+    let name: String
+}
