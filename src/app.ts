@@ -6,6 +6,7 @@ import { createRedisClient, type RedisClient } from "./cache/redis.js";
 import { DomainError } from "./errors.js";
 import { authRoutes } from "./auth/routes.js";
 import { profileRoutes } from "./profile/routes.js";
+import { goalRoutes } from "./goals/routes.js";
 import { logRoutes } from "./logs/routes.js";
 import { socialRoutes } from "./social/routes.js";
 
@@ -38,6 +39,7 @@ export function buildApp({ logger = true, config, db, redis }: AppDependencies =
       const feedCacheMaxAgeSeconds = config.FEED_CACHE_MAX_AGE_SECONDS;
       await api.register(authRoutes, { prefix: "/auth", config, db });
       await api.register(profileRoutes, { db });
+      await api.register(goalRoutes, { db });
       await api.register(logRoutes, { db, redis, feedCacheMaxAgeSeconds });
       await api.register(socialRoutes, { db, redis, feedCacheMaxAgeSeconds });
     }, { prefix: "/api/v1" });

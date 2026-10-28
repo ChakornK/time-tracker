@@ -44,10 +44,20 @@ export interface FollowsTable {
   created_at: Generated<Timestamp>;
 }
 
+export interface GoalsTable {
+  id: Generated<string>;
+  user_id: string;
+  category_id: string;
+  period: "day" | "week" | "month";
+  target_seconds: number;
+  created_at: Generated<Timestamp>;
+}
+
 export interface DatabaseSchema {
   users: UsersTable;
   categories: CategoriesTable;
   logs: LogsTable;
   log_categories: LogCategoriesTable;
   follows: FollowsTable;
+  goals: GoalsTable;
 }
