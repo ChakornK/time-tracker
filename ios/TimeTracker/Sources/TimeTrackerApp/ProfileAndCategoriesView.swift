@@ -264,7 +264,7 @@ struct ProfileAndCategoriesView: View {
                     ForEach(model.categories.categories) { category in
                         HStack(spacing: 12) {
                             Circle()
-                                .fill(Color(hex: category.colorHex))
+                                .fill(ChartPalette.color(forHex: category.colorHex))
                                 .frame(width: 12, height: 12)
                                 .accessibilityHidden(true)
                             Text(category.name)
@@ -368,18 +368,5 @@ struct ProfileAndCategoriesView: View {
         if model.canDelete(category) {
             deletingCategory = category
         }
-    }
-}
-
-private extension Color {
-    /// Parses `#RRGGBB`; malformed values render black.
-    init(hex: String) {
-        let value = UInt64(hex.dropFirst(), radix: 16) ?? 0
-        self.init(
-            .sRGB,
-            red: Double((value >> 16) & 0xFF) / 255,
-            green: Double((value >> 8) & 0xFF) / 255,
-            blue: Double(value & 0xFF) / 255
-        )
     }
 }

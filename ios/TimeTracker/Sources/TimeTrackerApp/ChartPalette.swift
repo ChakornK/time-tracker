@@ -5,7 +5,9 @@ import UIKit
 /// readers, and each slot has its own dark-mode step. Several light steps are low-contrast, so every
 /// chart pairs its marks with a legend that lists exact values.
 enum ChartPalette {
-    static let categorical: [Color] = [
+    /// Light and dark steps per slot. The backend assigns new categories these light values
+    /// (`src/profile/palette.ts`), so keep the two lists in sync.
+    private static let slots: [(light: Int, dark: Int)] = [
         (0x2A78D6, 0x3987E5), // blue
         (0xEB6834, 0xD95926), // orange
         (0x1BAF7A, 0x199E70), // aqua
@@ -14,7 +16,19 @@ enum ChartPalette {
         (0x008300, 0x008300), // green
         (0x6250D6, 0x9085E9), // violet
         (0xE34948, 0xE66767), // red
-    ].map { light, dark in Color(light: light, dark: dark) }
+    ]
+
+    static let categorical: [Color] = slots.map { Color(light: $0.light, dark: $0.dark) }
+
+    /// A category's stored `#RRGGBB` color: palette values get their slot's dark-mode step, any other
+    /// value is shown as is, and malformed values fall back to neutral.
+    static func color(forHex hex: String) -> Color {
+        guard hex.count == 7, hex.first == "#", let value = Int(hex.dropFirst(), radix: 16) else { return neutral }
+        if let slot = slots.first(where: { $0.light == value }) {
+            return Color(light: slot.light, dark: slot.dark)
+        }
+        return Color(light: value, dark: value)
+    }
 
     /// For time that isn't one of the user's categories, such as "Other categories".
     static let neutral = Color(uiColor: .systemGray2)
@@ -27,8 +41,8 @@ struct ChartSeries: Hashable {
     let color: Color
 }
 
-/// Assigns colors by the category's creation order rather than its rank, so filtering or re-ranking
-/// never repaints a category. Only the first eight categories get palette colors; later ones are neutral.
+/// Uses each category's stored color, so filtering, re-ranking, or deleting another category never
+/// repaints it.
 struct CategoryColorResolver {
     let categories: [APICategory]
 
@@ -36,11 +50,10 @@ struct CategoryColorResolver {
         guard let categoryID else {
             return ChartSeries(name: "Uncategorized", color: ChartPalette.neutral)
         }
-        guard let index = categories.firstIndex(where: { $0.id == categoryID }) else {
+        guard let category = categories.first(where: { $0.id == categoryID }) else {
             return ChartSeries(name: "Deleted category", color: ChartPalette.neutral)
         }
-        let color = index < ChartPalette.categorical.count ? ChartPalette.categorical[index] : ChartPalette.neutral
-        return ChartSeries(name: categories[index].name, color: color)
+        return ChartSeries(name: category.name, color: ChartPalette.color(forHex: category.colorHex))
     }
 }
 
