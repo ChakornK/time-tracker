@@ -161,7 +161,10 @@ test("categories can be renamed and deleted by their owner", async (t) => {
 
   const reading = (await app.inject({ method: "POST", url: "/api/v1/categories", headers: authA, payload: { name: "Reading" } }))
     .json().category;
-  await app.inject({ method: "POST", url: "/api/v1/categories", headers: authA, payload: { name: "Writing" } });
+  const writing = (await app.inject({ method: "POST", url: "/api/v1/categories", headers: authA, payload: { name: "Writing" } }))
+    .json().category;
+  assert.equal(reading.colorHex, "#2A78D6");
+  assert.equal(writing.colorHex, "#EB6834");
 
   const renamed = await app.inject({
     method: "PATCH",

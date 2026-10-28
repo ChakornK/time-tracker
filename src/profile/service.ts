@@ -2,6 +2,7 @@ import argon2 from "argon2";
 import type { Database } from "../db/client.js";
 import { isUniqueViolation, toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
+import { nextCategoryColor } from "./palette.js";
 import type {
   CreateCategoryInput,
   CategoryResponse,
@@ -110,14 +111,15 @@ export class ProfileService {
   }
 
   async createCategory(userId: string, input: CreateCategoryInput): Promise<CategoryResponse> {
+    const colorHex = input.colorHex ?? nextCategoryColor(
+      (await this.db.selectFrom("categories").select("color_hex").where("user_id", "=", userId).execute())
+        .map((row) => row.color_hex),
+    );
+
     try {
       const row = await this.db
         .insertInto("categories")
-        .values({
-          user_id: userId,
-          name: input.name,
-          ...(input.colorHex === undefined ? {} : { color_hex: input.colorHex }),
-        })
+        .values({ user_id: userId, name: input.name, color_hex: colorHex })
         .returning(["id", "name", "color_hex", "created_at"])
         .executeTakeFirstOrThrow();
 
