@@ -34,6 +34,8 @@ public struct APICategory: Codable, Equatable, Sendable, Identifiable {
 
 public enum ProfileClientError: Error, Equatable {
     case duplicateCategory
+    case duplicateEmail
+    case incorrectPassword
 }
 
 struct CategoriesEnvelope: Decodable {
@@ -46,6 +48,11 @@ struct CategoryEnvelope: Decodable {
 
 struct UpdateProfilePayload: Encodable {
     let displayName: String
+}
+
+struct UpdateEmailPayload: Encodable {
+    let email: String
+    let currentPassword: String
 }
 
 struct CreateCategoryPayload: Encodable {

@@ -55,17 +55,7 @@ public struct CategoryTimeAnalytics: Sendable {
         var totals: [UUID?: Double] = [:]
         for day in days {
             let dayInterval = calendar.dateInterval(of: .day, for: day) ?? DateInterval(start: day, duration: 86_400)
-            var byCategory: [UUID?: Double] = [:]
-            for log in relevantLogs {
-                let overlap = Double(log.overlapSeconds(with: dayInterval))
-                guard overlap > 0 else { continue }
-                let categoryIDs: [UUID?] = log.categoryIDs.isEmpty ? [nil] : Array(Set(log.categoryIDs))
-                let share = overlap / Double(categoryIDs.count)
-                for categoryID in categoryIDs {
-                    byCategory[categoryID, default: 0] += share
-                }
-            }
-            for (categoryID, seconds) in byCategory {
+            for (categoryID, seconds) in relevantLogs.categorySeconds(within: dayInterval) {
                 daily.append(DailyCategoryTime(day: day, categoryID: categoryID, seconds: seconds))
                 totals[categoryID, default: 0] += seconds
             }

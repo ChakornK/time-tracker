@@ -124,6 +124,23 @@ public struct TrackerAPIClient: Sendable {
         return envelope.user
     }
 
+    public func updateEmail(_ email: String, currentPassword: String, accessToken: String) async throws -> APIUser {
+        let request = try makeRequest(
+            .patch,
+            "me/email",
+            body: UpdateEmailPayload(email: email, currentPassword: currentPassword),
+            token: accessToken
+        )
+        do {
+            let envelope: UserEnvelope = try await send(request)
+            return envelope.user
+        } catch APIClientError.server(_, "EMAIL_CONFLICT") {
+            throw ProfileClientError.duplicateEmail
+        } catch APIClientError.server(_, "INCORRECT_PASSWORD") {
+            throw ProfileClientError.incorrectPassword
+        }
+    }
+
     public func categories(accessToken: String) async throws -> [APICategory] {
         let envelope: CategoriesEnvelope = try await send(makeRequest(.get, "categories", token: accessToken))
         return envelope.categories
@@ -142,6 +159,43 @@ public struct TrackerAPIClient: Sendable {
         } catch APIClientError.server(_, "CATEGORY_CONFLICT") {
             throw ProfileClientError.duplicateCategory
         }
+    }
+
+    // MARK: Goals
+
+    public func goals(accessToken: String) async throws -> [APIGoal] {
+        let envelope: GoalsEnvelope = try await send(makeRequest(.get, "goals", token: accessToken))
+        return envelope.goals
+    }
+
+    public func createGoal(categoryID: UUID, period: GoalPeriod, targetSeconds: Int, accessToken: String) async throws -> APIGoal {
+        let request = try makeRequest(
+            .post,
+            "goals",
+            body: CreateGoalPayload(categoryId: categoryID, period: period, targetSeconds: targetSeconds),
+            token: accessToken
+        )
+        do {
+            let envelope: GoalEnvelope = try await send(request)
+            return envelope.goal
+        } catch APIClientError.server(_, "GOAL_CONFLICT") {
+            throw GoalClientError.duplicateGoal
+        }
+    }
+
+    public func updateGoal(id: UUID, targetSeconds: Int, accessToken: String) async throws -> APIGoal {
+        let request = try makeRequest(
+            .patch,
+            "goals/\(id.uuidString)",
+            body: UpdateGoalPayload(targetSeconds: targetSeconds),
+            token: accessToken
+        )
+        let envelope: GoalEnvelope = try await send(request)
+        return envelope.goal
+    }
+
+    public func deleteGoal(id: UUID, accessToken: String) async throws {
+        _ = try await perform(makeRequest(.delete, "goals/\(id.uuidString)", token: accessToken))
     }
 
     // MARK: Social

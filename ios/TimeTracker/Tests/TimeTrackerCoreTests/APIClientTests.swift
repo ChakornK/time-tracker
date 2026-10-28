@@ -99,6 +99,76 @@ struct APIClientTests {
         }
     }
 
+    @Test func createGoalSendsPayloadAndDecodesGoal() async throws {
+        let goalID = UUID()
+        let categoryID = UUID()
+        let body = Data("""
+        {"goal":{"id":"\(goalID)","categoryId":"\(categoryID)","period":"week","targetSeconds":18000,"createdAt":"2026-02-08T12:00:00.000Z"}}
+        """.utf8)
+        let session = stubbedSession { request in
+            #expect(request.url?.path == "/api/v1/goals")
+            #expect(request.httpMethod == "POST")
+            let requestBody = try #require(requestBodyData(request))
+            let payload = try #require(JSONSerialization.jsonObject(with: requestBody) as? [String: Any])
+            #expect(payload["categoryId"] as? String == categoryID.uuidString)
+            #expect(payload["period"] as? String == "week")
+            #expect(payload["targetSeconds"] as? Int == 18_000)
+            return response(body: body, statusCode: 201)
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+
+        let goal = try await client.createGoal(categoryID: categoryID, period: .week, targetSeconds: 18_000, accessToken: "access-token")
+
+        #expect(goal.id == goalID)
+        #expect(goal.period == .week)
+    }
+
+    @Test func createGoalMapsDuplicateConflict() async throws {
+        let body = Data(#"{"error":{"code":"GOAL_CONFLICT","message":"exists"}}"#.utf8)
+        let session = stubbedSession { _ in response(body: body, statusCode: 409) }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+
+        await #expect(throws: GoalClientError.duplicateGoal) {
+            try await client.createGoal(categoryID: UUID(), period: .day, targetSeconds: 600, accessToken: "access-token")
+        }
+    }
+
+    @Test func deleteGoalUsesGoalPath() async throws {
+        let goalID = UUID()
+        let session = stubbedSession { request in
+            #expect(request.httpMethod == "DELETE")
+            #expect(request.url?.path == "/api/v1/goals/\(goalID.uuidString)")
+            return response(body: Data(), statusCode: 204)
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+
+        try await client.deleteGoal(id: goalID, accessToken: "access-token")
+    }
+
+    @Test func updateEmailMapsPasswordAndConflictErrors() async throws {
+        let wrongPassword = Data(#"{"error":{"code":"INCORRECT_PASSWORD","message":"no"}}"#.utf8)
+        let conflict = Data(#"{"error":{"code":"EMAIL_CONFLICT","message":"taken"}}"#.utf8)
+        let client = TrackerAPIClient(
+            baseURL: URL(string: "https://tracker.example.test")!,
+            session: stubbedSession { request in
+                #expect(request.url?.path == "/api/v1/me/email")
+                #expect(request.httpMethod == "PATCH")
+                return response(body: wrongPassword, statusCode: 403)
+            }
+        )
+        await #expect(throws: ProfileClientError.incorrectPassword) {
+            try await client.updateEmail("new@example.test", currentPassword: "nope", accessToken: "access-token")
+        }
+
+        let conflictClient = TrackerAPIClient(
+            baseURL: URL(string: "https://tracker.example.test")!,
+            session: stubbedSession { _ in response(body: conflict, statusCode: 409) }
+        )
+        await #expect(throws: ProfileClientError.duplicateEmail) {
+            try await conflictClient.updateEmail("new@example.test", currentPassword: "pw", accessToken: "access-token")
+        }
+    }
+
     @Test func createCategoryReturnsCreatedCategory() async throws {
         let categoryID = UUID()
         let body = Data("""

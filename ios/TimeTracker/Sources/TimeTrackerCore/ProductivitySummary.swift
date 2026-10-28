@@ -52,3 +52,21 @@ public struct ProductivitySummary: Equatable, Sendable {
         categorySeconds = byCategory
     }
 }
+
+extension [ProductivitySummaryLog] {
+    /// Seconds logged per category within `interval`. A log with several categories splits its time
+    /// evenly between them, and `nil` collects logs without a category.
+    func categorySeconds(within interval: DateInterval) -> [UUID?: Double] {
+        var byCategory: [UUID?: Double] = [:]
+        for log in self where log.endedAt > log.startedAt {
+            let overlap = Double(log.overlapSeconds(with: interval))
+            guard overlap > 0 else { continue }
+            let categoryIDs: [UUID?] = log.categoryIDs.isEmpty ? [nil] : Set(log.categoryIDs).map { $0 }
+            let share = overlap / Double(categoryIDs.count)
+            for categoryID in categoryIDs {
+                byCategory[categoryID, default: 0] += share
+            }
+        }
+        return byCategory
+    }
+}
