@@ -1,6 +1,9 @@
 import SwiftUI
 import UIKit
 
+// Compiled into both the app and the widget extension, so widgets and Live Activities color
+// categories the same way the app does.
+
 /// A validated categorical palette: the slot order keeps adjacent bars distinguishable for colorblind
 /// readers, and each slot has its own dark-mode step. Several light steps are low-contrast, so every
 /// chart pairs its marks with a legend that lists exact values.

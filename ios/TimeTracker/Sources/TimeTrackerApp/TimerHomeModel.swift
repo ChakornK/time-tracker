@@ -296,6 +296,12 @@ final class TimerHomeModel {
             if categories.category(withID: selectedCategoryID) == nil {
                 selectedCategoryID = defaultCategoryID
             }
+            if let timer = runningTimer {
+                await liveActivity.updateColor(
+                    timerID: timer.id,
+                    colorHex: categories.category(withID: timer.categoryIDs.first)?.colorHex
+                )
+            }
             publishWidgetSummary()
         } catch let error as APIClientError where error.isUnauthorized {
             expireSession()

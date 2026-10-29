@@ -43,10 +43,11 @@ struct TimerLiveActivity: Widget {
                     .frame(width: 10, height: 10)
                     .accessibilityLabel(context.state.activityTitle)
             } compactTrailing: {
+                // Wide enough for "1:23:45" once a timer passes an hour.
                 context.state.elapsedText
-                    .monospacedDigit()
+                    .font(.callout.monospacedDigit())
                     .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 56)
+                    .frame(maxWidth: 68)
             } minimal: {
                 Circle()
                     .fill(context.state.categoryColor)

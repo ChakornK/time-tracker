@@ -39,7 +39,7 @@ struct LiveTimerLockScreenView: View {
                 .font(.title2.monospacedDigit().weight(.medium))
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 120, alignment: .trailing)
-                .accessibilityLabel("Elapsed time")
+                .accessibilityLabel(Text("Elapsed time ") + state.elapsedText)
             if let timerID {
                 StopTimerButton(timerID: timerID)
             }

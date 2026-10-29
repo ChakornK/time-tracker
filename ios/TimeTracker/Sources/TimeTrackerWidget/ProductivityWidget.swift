@@ -62,8 +62,11 @@ private struct ProductivityWidgetView: View {
 
     private var home: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Time Tracker")
-                .font(.headline)
+            // The small widget can't fit the header, the timer, and both totals at large text sizes.
+            if summary.runningTimer == nil || family != .systemSmall {
+                Text("Time Tracker")
+                    .font(.headline)
+            }
             if let timer = summary.runningTimer {
                 runningRow(timer)
             }
@@ -86,9 +89,11 @@ private struct ProductivityWidgetView: View {
     private var rectangular: some View {
         if let timer = summary.runningTimer {
             VStack(alignment: .leading, spacing: 2) {
+                // Category names can be personal, so they're hidden until the phone is unlocked.
                 Text(timer.title)
                     .font(.headline)
                     .lineLimit(1)
+                    .privacySensitive()
                 elapsed(since: timer.startedAt)
                     .font(.title3.monospacedDigit())
             }
@@ -109,10 +114,13 @@ private struct ProductivityWidgetView: View {
         }
     }
 
-    /// The single line above the Lock Screen clock.
+    /// The single line above the Lock Screen clock. It's one `Text`, so the category name can't be
+    /// redacted on its own; the whole line is hidden until the phone is unlocked instead.
+    @ViewBuilder
     private var inline: some View {
         if let timer = summary.runningTimer {
-            Text("\(timer.title) ") + elapsed(since: timer.startedAt)
+            (Text("\(timer.title) ") + elapsed(since: timer.startedAt))
+                .privacySensitive()
         } else {
             Text("\(DurationFormat.compact(summary.todaySeconds)) today")
         }

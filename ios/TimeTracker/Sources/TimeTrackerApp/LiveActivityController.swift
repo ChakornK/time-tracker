@@ -43,6 +43,21 @@ final class LiveActivityController {
         await end(timerID: timerID)
     }
 
+    /// Fills in the category color for an activity restored at launch, before categories had loaded.
+    func updateColor(timerID: UUID, colorHex: String?) async {
+        guard let colorHex else { return }
+        await Self.updateActivities(timerID: timerID, colorHex: colorHex)
+    }
+
+    private nonisolated static func updateActivities(timerID: UUID, colorHex: String) async {
+        for activity in TimerActivity.activities
+        where activity.attributes.timerID == timerID && activity.content.state.categoryColorHex != colorHex {
+            var state = activity.content.state
+            state.categoryColorHex = colorHex
+            await activity.update(ActivityContent(state: state, staleDate: nil))
+        }
+    }
+
     func end(timerID: UUID) async {
         await Self.endActivities { $0.timerID == timerID }
     }

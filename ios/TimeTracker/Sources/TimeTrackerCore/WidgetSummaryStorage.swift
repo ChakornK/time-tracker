@@ -102,7 +102,11 @@ public enum WidgetSummaryStorage {
         }
     }
 
+    /// On sign-out: the widget stops showing the account, and its logged times leave the shared container.
     public static func clearActiveUser(from defaults: UserDefaults?) {
+        if let userID = activeUserID(from: defaults) {
+            defaults?.removeObject(forKey: snapshotKey(for: userID))
+        }
         defaults?.removeObject(forKey: activeUserIDKey)
     }
 }
