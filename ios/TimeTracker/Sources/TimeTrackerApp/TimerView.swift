@@ -87,7 +87,13 @@ struct TimerView: View {
                 model.newCategoryName = ""
             }
             Button("Add") {
-                Task { await model.addCategory() }
+                Task {
+                    await model.addCategory()
+                    // The new category is selected, so the collapsed view already shows it.
+                    if model.errorMessage == nil {
+                        withAnimation(.snappy) { isShowingAllCategories = false }
+                    }
+                }
             }
             .disabled(model.newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
@@ -172,7 +178,7 @@ struct TimerView: View {
                         .font(.subheadline)
                     }
                     .frame(minHeight: 44)
-                    .accessibilityHint("Shows every category to choose from")
+                    .accessibilityValue(isShowingAllCategories ? "Expanded" : "Collapsed")
                 }
             }
 
@@ -206,9 +212,11 @@ struct TimerView: View {
                     if let category = model.categories.category(withID: model.selectedCategoryID) {
                         categoryChip(category)
                     } else {
-                        Text("No category chosen")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        Button("Choose a category") {
+                            withAnimation(.snappy) { isShowingAllCategories = true }
+                        }
+                        .font(.subheadline)
+                        .frame(minHeight: 44)
                     }
                     Spacer(minLength: 0)
                 }
@@ -262,6 +270,7 @@ struct TimerView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityHint(isShowingAllCategories ? "" : "Shows all categories")
     }
 }
 
