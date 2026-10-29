@@ -81,6 +81,7 @@ struct TimerView: View {
             Button("Add") {
                 Task { await model.addCategory() }
             }
+            .disabled(model.newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .alert(
             "Timer could not be saved",
@@ -141,24 +142,32 @@ struct TimerView: View {
                     .foregroundStyle(.secondary)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(model.categories.categories) { category in
-                        categoryChip(category)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(model.categories.categories) { category in
+                            categoryChip(category)
+                                .id(category.id)
+                        }
+                        Button {
+                            isAddingCategory = true
+                        } label: {
+                            Label("New category", systemImage: "plus")
+                                .font(.subheadline)
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 44)
+                                .overlay(Capsule().strokeBorder(Color(uiColor: .separator), style: StrokeStyle(lineWidth: 1, dash: [4])))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(model.categories.isCreating)
                     }
-                    Button {
-                        isAddingCategory = true
-                    } label: {
-                        Label("New category", systemImage: "plus")
-                            .font(.subheadline)
-                            .padding(.horizontal, 14)
-                            .frame(minHeight: 44)
-                            .overlay(Capsule().strokeBorder(Color(uiColor: .separator), style: StrokeStyle(lineWidth: 1, dash: [4])))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(model.categories.isCreating)
+                    .padding(.vertical, 2)
                 }
-                .padding(.vertical, 2)
+                // A new category is selected as it's added, but its chip lands at the end of the row.
+                .onChange(of: model.selectedCategoryID) { _, id in
+                    guard let id else { return }
+                    withAnimation { proxy.scrollTo(id, anchor: .center) }
+                }
             }
 
             Picker("Visibility", selection: $model.visibility) {

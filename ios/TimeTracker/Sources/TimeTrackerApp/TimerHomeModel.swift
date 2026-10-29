@@ -215,7 +215,7 @@ final class TimerHomeModel {
             newCategoryName = ""
             errorMessage = nil
         } catch ProfileClientError.duplicateCategory {
-            errorMessage = "That category already exists. Choose it from the list."
+            errorMessage = "That category already exists. Pick it from your categories."
         } catch {
             errorMessage = "Category could not be added. Check your connection and try again."
         }
