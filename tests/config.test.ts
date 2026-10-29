@@ -7,7 +7,6 @@ const validEnvironment = {
   HOST: "127.0.0.1",
   PORT: "4000",
   DATABASE_URL: "postgres://tracker:tracker@localhost:5432/tracker",
-  REDIS_URL: "redis://localhost:6379",
   JWT_SECRET: "a-secret-key-that-is-at-least-32-characters-long",
 };
 

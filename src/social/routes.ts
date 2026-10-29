@@ -1,18 +1,15 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { Database } from "../db/client.js";
-import type { RedisClient } from "../cache/redis.js";
 import { authenticate, authenticatedUserId, invalidRequest } from "../http.js";
 import { feedQuerySchema, followUserSchema } from "./schemas.js";
 import { decodeCursor, SocialService } from "./service.js";
 
 export interface SocialRouteOptions {
   db: Database;
-  redis?: RedisClient;
-  feedCacheMaxAgeSeconds?: number;
 }
 
-export const socialRoutes: FastifyPluginAsync<SocialRouteOptions> = async (app, { db, redis, feedCacheMaxAgeSeconds }) => {
-  const social = new SocialService(db, redis, feedCacheMaxAgeSeconds);
+export const socialRoutes: FastifyPluginAsync<SocialRouteOptions> = async (app, { db }) => {
+  const social = new SocialService(db);
 
   app.addHook("preHandler", authenticate);
 

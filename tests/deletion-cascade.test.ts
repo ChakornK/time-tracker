@@ -6,7 +6,6 @@ import { createDatabase } from "../src/db/client.js";
 const config = loadConfig({
   NODE_ENV: "test",
   DATABASE_URL: "postgres://tracker:tracker@localhost:55432/tracker",
-  REDIS_URL: "redis://localhost:6380",
   JWT_SECRET: "a-secret-key-that-is-at-least-32-characters-long",
 });
 

@@ -3,10 +3,6 @@ import { isUniqueViolation, toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
 import type { CreateLogInput, LogReceipt } from "./schemas.js";
 
-export interface LogPublisher {
-  addLog(logId: string): Promise<void>;
-}
-
 export class CategoryOwnershipError extends DomainError {
   constructor() {
     super(400, "INVALID_CATEGORIES", "One or more categories are unavailable to this account");
@@ -30,10 +26,7 @@ interface ExistingLog {
 }
 
 export class LogService {
-  constructor(
-    private readonly db: Database,
-    private readonly publisher?: LogPublisher,
-  ) {}
+  constructor(private readonly db: Database) {}
 
   async create(userId: string, input: CreateLogInput): Promise<LogReceipt> {
     try {
@@ -80,10 +73,6 @@ export class LogService {
 
         return { id: log.id, idempotencyKey: input.idempotencyKey, created: true };
       });
-
-      if (result.created && input.visibility === "public") {
-        await this.publishSafely(result.id);
-      }
       return result;
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
@@ -95,13 +84,6 @@ export class LogService {
     }
   }
 
-  private async publishSafely(logId: string): Promise<void> {
-    try {
-      await this.publisher?.addLog(logId);
-    } catch {
-      // Feed fan-out is best effort; readers fall back to PostgreSQL on cache misses.
-    }
-  }
 }
 
 function findLogByIdempotencyKey(db: Database, idempotencyKey: string): Promise<ExistingLog | undefined> {

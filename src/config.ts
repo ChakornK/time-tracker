@@ -5,10 +5,8 @@ const environmentSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default("15m"),
-  FEED_CACHE_MAX_AGE_SECONDS: z.coerce.number().int().min(60).max(2592000).default(604800),
 });
 
 export type AppConfig = z.infer<typeof environmentSchema>;

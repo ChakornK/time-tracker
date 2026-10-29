@@ -7,7 +7,6 @@ export async function getFeedFromDatabase(
   db: Database,
   userId: string,
   query: FeedQuery,
-  candidateIDs?: string[],
 ): Promise<{ rows: FeedEntry[]; hasMore: boolean }> {
   const cursor = query.cursor ? decodeCursor(query.cursor) : undefined;
   let feedQuery = db
@@ -32,10 +31,6 @@ export async function getFeedFromDatabase(
         expression("author_follow.following_id", "=", userId),
       ]),
     ]));
-
-  if (candidateIDs) {
-    feedQuery = feedQuery.where("logs.id", "in", candidateIDs.length > 0 ? candidateIDs : ["00000000-0000-0000-0000-000000000000"]);
-  }
 
   if (cursor) {
     // Kysely types `created_at` through the nullable joins in a way that rejects a plain Date operand.

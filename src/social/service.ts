@@ -1,7 +1,5 @@
 import type { Database } from "../db/client.js";
 import { DomainError } from "../errors.js";
-import type { RedisClient } from "../cache/redis.js";
-import { RedisFeedCache } from "../cache/feed-cache.js";
 import type { FeedCursor, FeedPage, FeedQuery } from "./schemas.js";
 import { getFeedFromDatabase } from "./feed-query.js";
 
@@ -18,15 +16,7 @@ export class SelfFollowError extends DomainError {
 }
 
 export class SocialService {
-  private readonly cache: RedisFeedCache | undefined;
-
-  constructor(
-    private readonly db: Database,
-    redis?: RedisClient,
-    private readonly cacheRetentionSeconds = 604800,
-  ) {
-    this.cache = redis ? new RedisFeedCache(redis) : undefined;
-  }
+  constructor(private readonly db: Database) {}
 
   async follow(followerId: string, followingId: string): Promise<void> {
     if (followerId === followingId) throw new SelfFollowError();
@@ -43,8 +33,6 @@ export class SocialService {
       .values({ follower_id: followerId, following_id: followingId })
       .onConflict((conflict) => conflict.columns(["follower_id", "following_id"]).doNothing())
       .execute();
-
-    await this.clearFeeds(followerId, followingId);
   }
 
   async unfollow(followerId: string, followingId: string): Promise<void> {
@@ -53,8 +41,6 @@ export class SocialService {
       .where("follower_id", "=", followerId)
       .where("following_id", "=", followingId)
       .execute();
-
-    await this.clearFeeds(followerId, followingId);
   }
 
   async listFollowing(userId: string) {
@@ -94,62 +80,11 @@ export class SocialService {
     }));
   }
 
-  async getFeedPage(userId: string, query: FeedQuery): Promise<FeedPage> {
-    const cursor = query.cursor ? decodeCursor(query.cursor) : undefined;
-    const candidates = await this.readCandidates(userId, cursor, query.limit);
-    if (candidates) {
-      const cachedPage = await getFeedFromDatabase(this.db, userId, query, candidates);
-      // Only a full page with more cached after it is known to be complete. A short page may be the
-      // end of the cached run rather than the end of the feed, so it comes from the database.
-      const hasMore = cachedPage.hasMore || candidates.length > query.limit;
-      if (cachedPage.rows.length === query.limit && hasMore) {
-        return pageFromRows(cachedPage.rows, true);
-      }
-    }
-
-    const authoritativePage = await getFeedFromDatabase(this.db, userId, query);
-    if (this.cache) await this.cachePage(userId, authoritativePage.rows);
-    return pageFromRows(authoritativePage.rows, authoritativePage.hasMore);
+  getFeedPage(userId: string, query: FeedQuery): Promise<FeedPage> {
+    return getFeedFromDatabase(this.db, userId, query)
+      .then(({ rows, hasMore }) => pageFromRows(rows, hasMore));
   }
 
-  private async readCandidates(userId: string, cursor: FeedCursor | undefined, limit: number): Promise<string[] | undefined> {
-    if (!this.cache) return undefined;
-
-    try {
-      const entries = await this.cache.getCandidates(
-        userId,
-        cursor ? { id: cursor.id, createdAt: new Date(cursor.createdAt) } : undefined,
-        limit + 1,
-      );
-      return entries?.map((entry) => entry.id);
-    } catch {
-      return undefined;
-    }
-  }
-
-  private async cachePage(userId: string, rows: Array<{ id: string; createdAt: Date }>): Promise<void> {
-    try {
-      await this.cache?.addForFollowers(
-        [userId],
-        rows.map((row) => ({ id: row.id, createdAt: row.createdAt })),
-        this.cacheRetentionSeconds,
-      );
-    } catch {
-      return;
-    }
-  }
-
-  /**
-   * A follow change alters which logs both users can see, including friends-only logs, so their cached
-   * feeds are dropped and rebuilt from the database on the next read.
-   */
-  private async clearFeeds(...userIDs: string[]): Promise<void> {
-    try {
-      await this.cache?.clear(userIDs);
-    } catch {
-      return;
-    }
-  }
 }
 
 function escapeLikePattern(value: string): string {
