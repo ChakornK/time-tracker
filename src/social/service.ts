@@ -1,5 +1,4 @@
 import type { Database } from "../db/client.js";
-import { toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
 import type { RedisClient } from "../cache/redis.js";
 import { RedisFeedCache } from "../cache/feed-cache.js";
@@ -45,11 +44,7 @@ export class SocialService {
       .onConflict((conflict) => conflict.columns(["follower_id", "following_id"]).doNothing())
       .execute();
 
-    try {
-      await this.backfillFollower(followerId, followingId);
-    } catch {
-      return;
-    }
+    await this.clearFeeds(followerId, followingId);
   }
 
   async unfollow(followerId: string, followingId: string): Promise<void> {
@@ -59,16 +54,7 @@ export class SocialService {
       .where("following_id", "=", followingId)
       .execute();
 
-    try {
-      const logs = await this.db
-        .selectFrom("logs")
-        .select("id")
-        .where("user_id", "=", followingId)
-        .execute();
-      await this.cache?.removeLogs(logs.map((log) => log.id), [followerId]);
-    } catch {
-      return;
-    }
+    await this.clearFeeds(followerId, followingId);
   }
 
   async listFollowing(userId: string) {
@@ -113,8 +99,11 @@ export class SocialService {
     const candidates = await this.readCandidates(userId, cursor, query.limit);
     if (candidates) {
       const cachedPage = await getFeedFromDatabase(this.db, userId, query, candidates);
-      if (cachedPage.rows.length >= Math.min(query.limit, candidates.length)) {
-        return pageFromRows(cachedPage.rows, cachedPage.hasMore || candidates.length > query.limit);
+      // Only a full page with more cached after it is known to be complete. A short page may be the
+      // end of the cached run rather than the end of the feed, so it comes from the database.
+      const hasMore = cachedPage.hasMore || candidates.length > query.limit;
+      if (cachedPage.rows.length === query.limit && hasMore) {
+        return pageFromRows(cachedPage.rows, true);
       }
     }
 
@@ -150,18 +139,16 @@ export class SocialService {
     }
   }
 
-  private async backfillFollower(followerId: string, authorId: string): Promise<void> {
-    const logs = await this.db
-      .selectFrom("logs")
-      .select(["id", "created_at"])
-      .where("user_id", "=", authorId)
-      .where("visibility", "=", "public")
-      .execute();
-    await this.cache?.addForFollowers(
-      [followerId],
-      logs.map((log) => ({ id: log.id, createdAt: toDate(log.created_at) })),
-      this.cacheRetentionSeconds,
-    );
+  /**
+   * A follow change alters which logs both users can see, including friends-only logs, so their cached
+   * feeds are dropped and rebuilt from the database on the next read.
+   */
+  private async clearFeeds(...userIDs: string[]): Promise<void> {
+    try {
+      await this.cache?.clear(userIDs);
+    } catch {
+      return;
+    }
   }
 }
 

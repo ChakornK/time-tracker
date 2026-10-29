@@ -3,8 +3,8 @@ import { isUniqueViolation, toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
 import type { CreateLogInput, LogReceipt } from "./schemas.js";
 
-export interface PublicLogPublisher {
-  addPublicLog(logId: string): Promise<void>;
+export interface LogPublisher {
+  addLog(logId: string): Promise<void>;
 }
 
 export class CategoryOwnershipError extends DomainError {
@@ -32,7 +32,7 @@ interface ExistingLog {
 export class LogService {
   constructor(
     private readonly db: Database,
-    private readonly publisher?: PublicLogPublisher,
+    private readonly publisher?: LogPublisher,
   ) {}
 
   async create(userId: string, input: CreateLogInput): Promise<LogReceipt> {
@@ -97,7 +97,7 @@ export class LogService {
 
   private async publishSafely(logId: string): Promise<void> {
     try {
-      await this.publisher?.addPublicLog(logId);
+      await this.publisher?.addLog(logId);
     } catch {
       // Feed fan-out is best effort; readers fall back to PostgreSQL on cache misses.
     }

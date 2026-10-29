@@ -5,10 +5,19 @@ export interface FeedCandidate {
   createdAt: Date;
 }
 
+/**
+ * Each user's feed as log IDs ordered by creation time. An entry covers a contiguous run of the newest
+ * logs, built from database pages, so fan-out only extends entries that already exist.
+ */
 export interface FeedCache {
-  addForFollowers(followerIDs: string[], logs: FeedCandidate[], retentionSeconds: number): Promise<void>;
+  addForFollowers(
+    followerIDs: string[],
+    logs: FeedCandidate[],
+    retentionSeconds: number,
+    options?: { onlyExisting?: boolean },
+  ): Promise<void>;
   getCandidates(userId: string, before?: FeedCandidate, limit?: number): Promise<FeedCandidate[] | null>;
-  removeLogs(logIDs: string[], followerIDs: string[]): Promise<void>;
+  clear(userIDs: string[]): Promise<void>;
 }
 
 export class RedisFeedCache implements FeedCache {
@@ -18,11 +27,14 @@ export class RedisFeedCache implements FeedCache {
     followerIDs: string[],
     logs: FeedCandidate[],
     retentionSeconds: number,
+    options: { onlyExisting?: boolean } = {},
   ): Promise<void> {
     if (followerIDs.length === 0 || logs.length === 0) return;
 
     await Promise.all(followerIDs.map(async (followerId) => {
       const key = feedKey(followerId);
+      // Creating an entry here would hold only the new log, which readers would take as the whole feed.
+      if (options.onlyExisting && !(await this.client.exists(key))) return;
       const commands = this.client.multi();
       for (const log of logs) {
         commands.zAdd(key, { score: log.createdAt.getTime(), value: log.id });
@@ -52,11 +64,9 @@ export class RedisFeedCache implements FeedCache {
     return candidates.slice(0, limit);
   }
 
-  async removeLogs(logIDs: string[], followerIDs: string[]): Promise<void> {
-    if (logIDs.length === 0 || followerIDs.length === 0) return;
-    await Promise.all(followerIDs.map((followerId) =>
-      this.client.zRem(feedKey(followerId), logIDs),
-    ));
+  async clear(userIDs: string[]): Promise<void> {
+    if (userIDs.length === 0) return;
+    await this.client.del(userIDs.map(feedKey));
   }
 }
 

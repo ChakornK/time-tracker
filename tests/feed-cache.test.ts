@@ -64,15 +64,15 @@ test("Redis feed cache fans out public logs and PostgreSQL repairs misses", asyn
   ]).returning(["id", "visibility", "created_at"]).execute();
 
   const distributor = new FeedDistributor(database.db, cache, 86400);
-  await Promise.all(logs.map((log) => distributor.addPublicLog(log.id)));
-  const indexed = await cache.getCandidates(viewerId);
-  assert.equal(indexed?.length, 1);
-  assert.equal(indexed?.[0]?.id, logs.find((log) => log.visibility === "public")?.id);
+  await Promise.all(logs.map((log) => distributor.addLog(log.id)));
+  assert.equal(await cache.getCandidates(viewerId), null, "fan-out must not start a partial feed");
 
   const social = new SocialService(database.db, redis);
   const cachedPage = await social.getFeedPage(viewerId, { limit: 10 });
   assert.equal(cachedPage.items.length, 1);
   assert.equal(cachedPage.items[0]?.title, "Public cached");
+  const indexed = await cache.getCandidates(viewerId);
+  assert.deepEqual(indexed?.map((entry) => entry.id), [logs.find((log) => log.visibility === "public")?.id]);
 
   await redis.del(`feed:${viewerId}`);
   const recoveredPage = await social.getFeedPage(viewerId, { limit: 10 });
@@ -88,14 +88,14 @@ test("Redis feed cache fans out public logs and PostgreSQL repairs misses", asyn
   const disconnectedCache = {
     addForFollowers: async () => { throw cacheError; },
     getCandidates: async () => { throw cacheError; },
-    removeLogs: async () => { throw cacheError; },
+    clear: async () => { throw cacheError; },
   };
   const disconnectedSocial = new SocialService(database.db, disconnectedCache as never);
   const disconnectedPage = await disconnectedSocial.getFeedPage(viewerId, { limit: 10 });
   assert.deepEqual(disconnectedPage.items.map((item) => item.id), authoritativePage.items.map((item) => item.id));
 
   const publisher = new FeedDistributor(database.db, disconnectedCache, 86400);
-  await assert.rejects(() => publisher.addPublicLog(logs[0]!.id), cacheError);
+  await assert.rejects(() => publisher.addLog(logs[0]!.id), cacheError);
 
   app = buildApp({ config, db: database.db, redis: redis as never, logger: false });
   await app.ready();
@@ -149,6 +149,69 @@ test("Redis feed cache fans out public logs and PostgreSQL repairs misses", asyn
   assert.equal(apiFeed.statusCode, 200, apiFeed.body);
   assert.ok(apiFeed.json().items.some((item: { title: string }) => item.title === "Visible over API after cache miss"));
   assert.ok(!apiFeed.json().items.some((item: { title: string }) => item.title === "Private API log must stay hidden"));
+});
+
+test("cached feeds include your own and friends-only logs, and later pages", async (t) => {
+  const database = createDatabase(config);
+  const redis = createClient({ url: config.REDIS_URL });
+  redis.on("error", () => {});
+  await redis.connect();
+  const cache = new RedisFeedCache(redis);
+  const prefix = `own_${crypto.randomUUID().slice(0, 8)}`;
+  const viewerId = crypto.randomUUID();
+  const friendId = crypto.randomUUID();
+
+  t.after(async () => {
+    await redis.del([`feed:${viewerId}`, `feed:${friendId}`]);
+    await redis.quit();
+    await database.db.deleteFrom("users").where("id", "in", [viewerId, friendId]).execute();
+    await database.close();
+  });
+
+  await database.db.insertInto("users").values([
+    { id: viewerId, username: `${prefix}-viewer`, display_name: "Viewer", email: `${prefix}-viewer@example.test`, password_hash: "hash" },
+    { id: friendId, username: `${prefix}-friend`, display_name: "Friend", email: `${prefix}-friend@example.test`, password_hash: "hash" },
+  ]).execute();
+  // The friend follows the viewer, which is what lets the viewer see the friend's friends-only logs.
+  await database.db.insertInto("follows").values([
+    { follower_id: viewerId, following_id: friendId },
+    { follower_id: friendId, following_id: viewerId },
+  ]).execute();
+
+  const insertLog = async (userId: string, title: string, visibility: "public" | "private" | "friends_only", minute: number) => {
+    const row = await database.db.insertInto("logs").values({
+      user_id: userId,
+      title,
+      started_at: new Date("2026-03-01T09:00:00Z"),
+      ended_at: new Date("2026-03-01T09:30:00Z"),
+      visibility,
+      idempotency_key: crypto.randomUUID(),
+      // `Generated<Timestamp>` resolves to the column type itself on insert, so Kysely rejects a plain Date.
+      created_at: new Date(Date.UTC(2026, 2, 1, 10, minute)) as never,
+    }).returning("id").executeTakeFirstOrThrow();
+    return row.id;
+  };
+  for (const minute of [1, 2, 3]) await insertLog(friendId, `Public ${minute}`, "public", minute);
+
+  const social = new SocialService(database.db, redis);
+  const firstPage = await social.getFeedPage(viewerId, { limit: 2 });
+  assert.deepEqual(firstPage.items.map((item) => item.title), ["Public 3", "Public 2"]);
+  assert.ok(firstPage.nextCursor);
+
+  // Only the first page is cached, so the next page must come from the database rather than look empty.
+  const secondPage = await social.getFeedPage(viewerId, { limit: 2, cursor: firstPage.nextCursor });
+  assert.deepEqual(secondPage.items.map((item) => item.title), ["Public 1"]);
+
+  const distributor = new FeedDistributor(database.db, cache, 86400);
+  await distributor.addLog(await insertLog(viewerId, "My private log", "private", 4));
+  await distributor.addLog(await insertLog(friendId, "Friends-only log", "friends_only", 5));
+
+  const newest = await social.getFeedPage(viewerId, { limit: 2 });
+  assert.deepEqual(newest.items.map((item) => item.title), ["Friends-only log", "My private log"]);
+
+  await social.unfollow(viewerId, friendId);
+  assert.equal(await cache.getCandidates(viewerId), null);
+  assert.equal(await cache.getCandidates(friendId), null);
 });
 
 async function registerAccount(app: ReturnType<typeof buildApp>, prefix: string, role: string) {
