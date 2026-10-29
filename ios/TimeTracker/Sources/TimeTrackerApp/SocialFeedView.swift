@@ -11,6 +11,8 @@ final class SocialFeedModel {
     private(set) var isLoadingMore = false
     private(set) var hasLoaded = false
     private(set) var errorMessage: String?
+    private var isRefreshingNewest = false
+    private var needsNewestRefresh = false
 
     init(api: TrackerAPIClient, token: String) {
         self.api = api
@@ -18,10 +20,13 @@ final class SocialFeedModel {
     }
 
     func loadFirstPage() async {
-        guard !isLoading else { return }
+        guard !isLoading else {
+            // Replayed once this load finishes, so a log that synced meanwhile isn't missed.
+            needsNewestRefresh = true
+            return
+        }
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false; hasLoaded = true }
         do {
             let page = try await api.feedPage(accessToken: token)
             entries = page.items
@@ -29,6 +34,35 @@ final class SocialFeedModel {
         } catch {
             errorMessage = "The feed could not be loaded. Check your connection and try again."
         }
+        isLoading = false
+        hasLoaded = true
+        if needsNewestRefresh {
+            await refreshNewest()
+        }
+    }
+
+    /// Adds logs newer than the ones already shown, keeping everything loaded so far so the list
+    /// doesn't jump back to the top. A request made while one is running is replayed afterward, so a
+    /// log that syncs mid-request still arrives.
+    func refreshNewest() async {
+        guard hasLoaded, !entries.isEmpty else { return await loadFirstPage() }
+        guard !isRefreshingNewest else {
+            needsNewestRefresh = true
+            return
+        }
+        isRefreshingNewest = true
+        defer { isRefreshingNewest = false }
+        repeat {
+            needsNewestRefresh = false
+            do {
+                let page = try await api.feedPage(accessToken: token)
+                let known = Set(entries.map(\.id))
+                entries.insert(contentsOf: page.items.filter { !known.contains($0.id) }, at: 0)
+                errorMessage = nil
+            } catch {
+                errorMessage = "New activity could not be loaded. Pull to refresh."
+            }
+        } while needsNewestRefresh
     }
 
     func loadMore() async {
@@ -77,10 +111,10 @@ struct SocialFeedView: View {
     var body: some View {
         content
             .task { await model.loadFirstPage() }
-            // Once a log syncs it leaves the device list, so reload to pick up the server's copy.
+            // A log that syncs leaves the device list, so fetch the server's copy.
             .onChange(of: unsyncedLogs.map(\.id)) { old, new in
-                if new.count < old.count {
-                    Task { await model.loadFirstPage() }
+                if !Set(old).isSubset(of: Set(new)) {
+                    Task { await model.refreshNewest() }
                 }
             }
             .navigationTitle("Feed")
@@ -98,7 +132,7 @@ struct SocialFeedView: View {
 
     @ViewBuilder
     private var content: some View {
-        if model.isLoading && !model.hasLoaded && unsyncedLogs.isEmpty {
+        if !model.hasLoaded && unsyncedLogs.isEmpty {
             ProgressView("Loading feed")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if model.entries.isEmpty && unsyncedLogs.isEmpty, let errorMessage = model.errorMessage {
@@ -144,7 +178,7 @@ struct SocialFeedView: View {
                             }
                         }
                 }
-                if model.isLoadingMore {
+                if model.isLoadingMore || (!model.hasLoaded && model.entries.isEmpty) {
                     ProgressView("Loading more activity")
                         .frame(maxWidth: .infinity)
                         .listRowSeparator(.hidden)

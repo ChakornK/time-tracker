@@ -64,7 +64,9 @@ struct LogRowContent: Identifiable {
         endedAt = entry.endedAt
         durationSeconds = entry.durationSeconds
         visibility = entry.visibility
-        time = .relative(entry.createdAt)
+        // The feed is ordered by when logs were posted, but a log recorded offline yesterday should
+        // still say yesterday, matching how it read before it synced.
+        time = .relative(entry.endedAt)
         syncStatus = nil
     }
 }
