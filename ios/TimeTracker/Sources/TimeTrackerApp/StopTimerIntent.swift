@@ -1,3 +1,4 @@
+import ActivityKit
 import AppIntents
 import Foundation
 
@@ -17,8 +18,15 @@ struct StopTimerIntent: LiveActivityIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        if let id = UUID(uuidString: timerID), let stop = await TimerIntentHandling.stop {
+        guard let id = UUID(uuidString: timerID) else { return .result() }
+        if let stop = await TimerIntentHandling.stop {
             await stop(id)
+        } else {
+            // The app always sets the handler before an intent arrives; if it somehow hasn't, at least
+            // dismiss the activity. The timer keeps running and the app restores its activity on launch.
+            for activity in Activity<TimerActivityAttributes>.activities where activity.attributes.timerID == id {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
         }
         return .result()
     }

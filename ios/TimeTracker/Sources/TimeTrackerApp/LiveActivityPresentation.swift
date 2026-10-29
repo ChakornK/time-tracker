@@ -66,4 +66,3 @@ struct StopTimerButton: View {
         .accessibilityLabel("Stop timer")
     }
 }
-

@@ -186,6 +186,10 @@ final class TimerHomeModel {
             let log = try store.stop(timerID: timer.id, userID: userID, endedAt: date)
             lastSavedDurationSeconds = log.durationSeconds
             errorMessage = nil
+        } catch TimerStoreError.timerNotFound {
+            // Already stopped and saved from the Live Activity, which refreshes the app on its own.
+            reloadLocalData()
+            return
         } catch {
             stopFailureMessage = error.localizedDescription
             return
