@@ -51,7 +51,8 @@ struct MainTabView: View {
                     token: token,
                     viewerID: user.id,
                     localLogs: model.logs,
-                    categories: model.categories.categories
+                    categories: model.categories.categories,
+                    changeLog: model.changeLog
                 )
             }
             .tabItem { Label("Feed", systemImage: "person.2") }
@@ -71,7 +72,8 @@ struct MainTabView: View {
                     categories: model.categories,
                     goals: model.goals,
                     isCategoryAwaitingSync: { [model] in model.categoryIDsAwaitingSync.contains($0) },
-                    onCategoryDeleted: model.categoryWasDeleted
+                    onCategoryDeleted: model.categoryWasDeleted,
+                    changeLog: model.changeLog
                 )
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {

@@ -73,6 +73,17 @@ final class SocialFeedModel {
         } while needsNewestRefresh
     }
 
+    /// Shows an entry after its owner edits it, without reloading the feed.
+    func replace(_ entry: FeedEntry) {
+        if let index = entries.firstIndex(where: { $0.id == entry.id }) {
+            entries[index] = entry
+        }
+    }
+
+    func remove(id: UUID) {
+        entries.removeAll { $0.id == id }
+    }
+
     func loadMore() async {
         guard !isLoadingMore, let nextCursor else { return }
         isLoadingMore = true
@@ -99,13 +110,23 @@ struct SocialFeedView: View {
     private let viewerID: UUID
     private let localLogs: [LocalActivityLog]
     private let categories: [APICategory]
+    private let changeLog: LogChanger
+    @State private var logActions = LogActionState()
 
-    init(api: TrackerAPIClient, token: String, viewerID: UUID, localLogs: [LocalActivityLog], categories: [APICategory]) {
+    init(
+        api: TrackerAPIClient,
+        token: String,
+        viewerID: UUID,
+        localLogs: [LocalActivityLog],
+        categories: [APICategory],
+        changeLog: @escaping LogChanger
+    ) {
         self.api = api
         self.token = token
         self.viewerID = viewerID
         self.localLogs = localLogs
         self.categories = categories
+        self.changeLog = changeLog
         _model = State(initialValue: SocialFeedModel(api: api, token: token))
     }
 
@@ -126,6 +147,19 @@ struct SocialFeedView: View {
                 }
             }
             .navigationTitle("Feed")
+            .logActionPresentations(state: $logActions, categories: categories, change: changeLog) { target, change in
+                guard let serverID = target.serverID else { return }
+                switch change {
+                case .delete:
+                    model.remove(id: serverID)
+                case .edit(let edit):
+                    guard let entry = model.entries.first(where: { $0.id == serverID }) else { return }
+                    let entryCategories = categories
+                        .filter { edit.categoryIDs.contains($0.id) }
+                        .map { FeedEntry.Category(id: $0.id, name: $0.name, colorHex: $0.colorHex) }
+                    model.replace(entry.applying(edit, categories: entryCategories))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
@@ -176,10 +210,15 @@ struct SocialFeedView: View {
                 ForEach(unsyncedLogs) { log in
                     LogRow(content: LogRowContent(log: log, categories: categories, author: .you, time: .relative(log.endedAt)))
                         .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
+                        .logSwipeActions(LogTarget(log: log), state: $logActions)
                 }
                 ForEach(model.entries) { entry in
                     LogRow(content: LogRowContent(entry: entry, viewerID: viewerID))
                         .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
+                        .modifier(OwnLogSwipeActions(
+                            target: entry.author.id == viewerID ? LogTarget(entry: entry, localLogs: localLogs) : nil,
+                            state: $logActions
+                        ))
                         .task {
                             if entry.id == model.entries.last?.id {
                                 await model.loadMore()
@@ -209,3 +248,18 @@ struct SocialFeedView: View {
         }
     }
 }
+
+/// Swipe actions only on the viewer's own entries; other people's logs can't be changed.
+private struct OwnLogSwipeActions: ViewModifier {
+    let target: LogTarget?
+    @Binding var state: LogActionState
+
+    func body(content: Content) -> some View {
+        if let target {
+            content.logSwipeActions(target, state: $state)
+        } else {
+            content
+        }
+    }
+}
+

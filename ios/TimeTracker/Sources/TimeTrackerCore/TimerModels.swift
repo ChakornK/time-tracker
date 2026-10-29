@@ -98,6 +98,11 @@ public struct LocalActivityLog: Equatable, Sendable, Identifiable {
     public var durationSeconds: Int {
         max(0, Int(endedAt.timeIntervalSince(startedAt)))
     }
+
+    /// The editable fields, to start an edit from.
+    public var logEdit: LogEdit {
+        LogEdit(title: title, notes: notes, startedAt: startedAt, endedAt: endedAt, categoryIDs: categoryIDs, visibility: visibility)
+    }
 }
 
 public enum LogNotes {
@@ -162,4 +167,3 @@ extension LocalActivityLog {
         }
     }
 }
-

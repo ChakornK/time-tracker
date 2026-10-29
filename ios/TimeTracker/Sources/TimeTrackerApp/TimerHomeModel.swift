@@ -206,6 +206,71 @@ final class TimerHomeModel {
         await synchronize()
     }
 
+    /// Edits or deletes one of the user's logs, wherever it lives: on the server, on this device, or
+    /// both. Insights, goals and the widget all read `logs`, so reloading it updates them.
+    /// - Parameters:
+    ///   - localID: The log on this device, if the change starts from one.
+    ///   - serverID: The log on the server, for feed entries that may not be on this device.
+    func changeLog(_ change: LogChange, localID: UUID?, serverID: UUID?) async throws {
+        let local = logs.first { log in
+            (localID != nil && log.id == localID) || (serverID != nil && log.serverID == serverID)
+        }
+        guard let route = local?.changeRoute ?? serverID.map({ LogChangeRoute.server(id: $0) }) else {
+            throw LogChangeError.notFound
+        }
+
+        switch route {
+        case .waitForSync:
+            throw TimerStoreError.logAwaitingSync
+        case .server(let id):
+            do {
+                switch change {
+                case .edit(let edit): try await api.updateLog(id: id, edit: edit, accessToken: token)
+                case .delete: try await api.deleteLog(id: id, accessToken: token)
+                }
+            } catch APIClientError.server(404, _) where change == .delete {
+                // Already gone, for example deleted from another device.
+            } catch APIClientError.server(404, _) {
+                throw LogChangeError.notFound
+            } catch let error as APIClientError where error.isUnauthorized {
+                expireSession()
+                throw error
+            } catch let error as APIClientError where LogSyncCoordinator.isDefiniteRejection(error) {
+                throw LogChangeError.rejected
+            } catch {
+                throw LogChangeError.offline
+            }
+        case .localOnly:
+            break
+        }
+
+        if let local {
+            switch change {
+            case .edit(let edit): try store.updateLog(id: local.id, userID: userID, edit: edit)
+            case .delete: try store.deleteLog(id: local.id, userID: userID)
+            }
+        }
+        reloadLocalData()
+        publishWidgetSummary()
+    }
+
+    /// Throws away the running timer without saving a log, for one started by mistake.
+    func discardRunningTimer() async {
+        guard let timer = runningTimer else { return }
+        do {
+            try store.discardTimer(timerID: timer.id, userID: userID)
+        } catch TimerStoreError.timerNotFound {
+            // Already stopped from the Live Activity.
+        } catch {
+            errorMessage = "The timer could not be discarded. Try again."
+            return
+        }
+        reloadLocalData()
+        await liveActivity.end(timerID: timer.id)
+        activityState = nil
+        publishWidgetSummary()
+    }
+
     /// Replaces the running timer's notes, which are saved with its log when it stops.
     func updateNotes(_ notes: String) {
         guard let timer = runningTimer else {
@@ -373,3 +438,23 @@ enum ManualLogError: LocalizedError {
         }
     }
 }
+
+enum LogChange: Equatable {
+    case edit(LogEdit)
+    case delete
+}
+
+enum LogChangeError: LocalizedError {
+    case notFound
+    case rejected
+    case offline
+
+    var errorDescription: String? {
+        switch self {
+        case .notFound: "This log no longer exists. Pull to refresh."
+        case .rejected: "The server didn't accept that change. Check the times and category and try again."
+        case .offline: "The change couldn't reach the server. Check your connection and try again."
+        }
+    }
+}
+

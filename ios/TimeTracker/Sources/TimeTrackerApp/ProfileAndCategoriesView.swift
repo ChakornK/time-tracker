@@ -177,6 +177,8 @@ struct ProfileAndCategoriesView: View {
     @State private var renamingCategory: APICategory?
     @State private var renameText = ""
     @State private var deletingCategory: APICategory?
+    @State private var logActions = LogActionState()
+    private let changeLog: LogChanger
 
     init(
         user: APIUser,
@@ -185,11 +187,13 @@ struct ProfileAndCategoriesView: View {
         categories: CategoryStore,
         goals: GoalStore,
         isCategoryAwaitingSync: @escaping (UUID) -> Bool,
-        onCategoryDeleted: @escaping (UUID) -> Void
+        onCategoryDeleted: @escaping (UUID) -> Void,
+        changeLog: @escaping LogChanger
     ) {
         self.user = user
         self.logs = logs
         self.localLogs = localLogs
+        self.changeLog = changeLog
         _model = State(initialValue: ProfileAndCategoriesModel(
             categories: categories,
             goals: goals,
@@ -253,6 +257,7 @@ struct ProfileAndCategoriesView: View {
         }
         .navigationTitle("Profile")
         .task { await model.load() }
+        .logActionPresentations(state: $logActions, categories: model.categories.categories, change: changeLog)
         .alert("Rename category", isPresented: isRenaming, presenting: renamingCategory) { category in
             TextField("Category name", text: $renameText)
                 .textInputAutocapitalization(.words)
@@ -316,6 +321,7 @@ struct ProfileAndCategoriesView: View {
                             author: nil,
                             time: .range
                         ))
+                        .logSwipeActions(LogTarget(log: log), state: $logActions)
                     }
                 } header: {
                     HStack {

@@ -5,6 +5,7 @@ struct TimerView: View {
     @State private var isShowingManualLog = false
     @State private var isAddingCategory = false
     @State private var isEditingNotes = false
+    @State private var isConfirmingDiscard = false
     /// Collapsed, the card shows only the chosen category, which defaults to the last one timed.
     @State private var isShowingAllCategories = false
 
@@ -154,8 +155,22 @@ struct TimerView: View {
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
             .primaryActionStyle()
+
+            // For a timer started by mistake. Time left running too long is fixed by editing the
+            // log after stopping.
+            Button("Discard timer", role: .destructive) {
+                isConfirmingDiscard = true
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
         }
         .cardStyle()
+        .confirmationDialog("Discard this timer?", isPresented: $isConfirmingDiscard, titleVisibility: .visible) {
+            Button("Discard timer", role: .destructive) {
+                Task { await model.discardRunningTimer() }
+            }
+        } message: {
+            Text("No time is saved.")
+        }
     }
 
     private var startTimerCard: some View {
