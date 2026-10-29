@@ -46,7 +46,8 @@ struct CategoryTimeAnalyticsTests {
         #expect(analytics.totalsByCategory[reading] == 3_600)
         #expect(analytics.totalsByCategory[nil] == 1_800)
         #expect(analytics.trackedSeconds == 9_000)
-        #expect(analytics.untrackedSeconds == 86_400 - 9_000)
+        // 15:00 means 15 hours of the day have passed.
+        #expect(analytics.untrackedSeconds == 15 * 3_600 - 9_000)
     }
 
     @Test func ignoresTimeOutsideThePeriodAndRanksByTotal() {

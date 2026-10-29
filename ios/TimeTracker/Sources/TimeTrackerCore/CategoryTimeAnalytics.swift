@@ -39,6 +39,8 @@ public struct CategoryTimeAnalytics: Sendable {
     public let days: [Date]
     public let daily: [DailyCategoryTime]
     public let totalsByCategory: [UUID?: Double]
+    /// The part of the period that has already happened.
+    public let elapsedSeconds: Double
 
     public init(logs: [ProductivitySummaryLog], period: AnalyticsPeriod, now: Date = .now, calendar: Calendar = .current) {
         let interval = period.interval(containing: now, calendar: calendar)
@@ -65,18 +67,21 @@ public struct CategoryTimeAnalytics: Sendable {
         self.days = days
         self.daily = daily
         self.totalsByCategory = totals
+        elapsedSeconds = max(0, min(now, interval.end).timeIntervalSince(interval.start))
     }
 
     public var trackedSeconds: Double {
         totalsByCategory.values.reduce(0, +)
     }
 
-    /// Every hour in the period that has no logged time, including hours still ahead today.
+    /// Time so far in the period with nothing logged. Hours still ahead don't count, so the start of a
+    /// week doesn't read as almost all untracked.
     public var untrackedSeconds: Double {
-        max(0, interval.duration - trackedSeconds)
+        max(0, elapsedSeconds - trackedSeconds)
     }
 
-    /// Categories with logged time, most time first; ties fall back to a stable order.
+    /// Categories with logged time, most time first; ties fall back to a stable order. `nil` is
+    /// uncategorized time.
     public var rankedCategoryIDs: [UUID?] {
         totalsByCategory
             .sorted { lhs, rhs in

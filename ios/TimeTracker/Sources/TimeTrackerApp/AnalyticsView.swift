@@ -81,7 +81,8 @@ private struct InsightsSummaryCard: View {
                 DurationText(analytics.trackedSeconds)
             }
             stat("Top category") {
-                if let top = analytics.rankedCategoryIDs.first {
+                // Uncategorized time isn't a category, so it never counts as the top one.
+                if let top = analytics.rankedCategoryIDs.lazy.compactMap({ $0 }).first {
                     CategoryLabel(series: colors.series(for: top))
                 } else {
                     Text("None yet")

@@ -63,7 +63,7 @@ struct TrackedTimePieCard: View {
                     LegendRow(
                         series: slice.series,
                         seconds: slice.seconds,
-                        detail: percent(slice.seconds, of: analytics.interval.duration)
+                        detail: percent(slice.seconds, of: analytics.elapsedSeconds)
                     )
                 }
             }
@@ -98,14 +98,14 @@ struct TrackedTimePieCard: View {
     private func centerLabel(selected: Slice?, analytics: CategoryTimeAnalytics) -> some View {
         VStack(spacing: 2) {
             if let selected {
-                Text(percent(selected.seconds, of: analytics.interval.duration))
+                Text(percent(selected.seconds, of: analytics.elapsedSeconds))
                     .font(.title2.weight(.semibold).monospacedDigit())
                 Text(selected.series.name)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             } else {
-                Text(percent(analytics.trackedSeconds, of: analytics.interval.duration))
+                Text(percent(analytics.trackedSeconds, of: analytics.elapsedSeconds))
                     .font(.title2.weight(.semibold).monospacedDigit())
                 Text("tracked")
                     .font(.caption)
@@ -116,12 +116,9 @@ struct TrackedTimePieCard: View {
     }
 
     private func subtitle(for analytics: CategoryTimeAnalytics) -> String {
-        let hours = Int((analytics.interval.duration / 3_600).rounded())
-        return switch period {
-        case .day: "Out of the 24 hours in today"
-        case .week: "Out of the \(hours) hours in this week"
-        case .month: "Out of the \(hours) hours in \(analytics.interval.start.formatted(.dateTime.month(.wide)))"
-        }
+        let hours = Int((analytics.elapsedSeconds / 3_600).rounded())
+        let unit = hours == 1 ? "hour" : "hours"
+        return "Out of the \(hours) \(unit) so far \(period.phrase)"
     }
 
     private func percent(_ seconds: Double, of total: Double) -> String {
