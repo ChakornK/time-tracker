@@ -27,6 +27,6 @@ struct AnalyticsView: View {
             .padding(20)
         }
         .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle("Analytics")
+        .navigationTitle("Insights")
     }
 }

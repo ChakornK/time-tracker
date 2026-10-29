@@ -23,7 +23,6 @@
 		A10000000000000000000017 /* Sources/TimeTrackerApp/SocialFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000017 /* Sources/TimeTrackerApp/SocialFeedView.swift */; };
 		A10000000000000000000018 /* Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000018 /* Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift */; };
 		A10000000000000000000019 /* Sources/TimeTrackerApp/ProductivitySummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000019 /* Sources/TimeTrackerApp/ProductivitySummaryView.swift */; };
-		A10000000000000000000020 /* Sources/TimeTrackerApp/ActivityLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000020 /* Sources/TimeTrackerApp/ActivityLogView.swift */; };
 		A10000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift */; };
 		A10000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift */; };
 		A10000000000000000000025 /* Sources/TimeTrackerCore/SocialModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000025 /* Sources/TimeTrackerCore/SocialModels.swift */; };
@@ -116,7 +115,6 @@
 		B20000000000000000000017 /* Sources/TimeTrackerApp/SocialFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/SocialFeedView.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000018 /* Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift"; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000019 /* Sources/TimeTrackerApp/ProductivitySummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/ProductivitySummaryView.swift; sourceTree = SOURCE_ROOT; };
-		B20000000000000000000020 /* Sources/TimeTrackerApp/ActivityLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/ActivityLogView.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/DurationFormat.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/ProductivitySummary.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000025 /* Sources/TimeTrackerCore/SocialModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/SocialModels.swift; sourceTree = SOURCE_ROOT; };
@@ -198,7 +196,6 @@
 				B20000000000000000000017 /* Sources/TimeTrackerApp/SocialFeedView.swift */,
 				B20000000000000000000018 /* Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift */,
 				B20000000000000000000019 /* Sources/TimeTrackerApp/ProductivitySummaryView.swift */,
-				B20000000000000000000020 /* Sources/TimeTrackerApp/ActivityLogView.swift */,
 				B20000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift */,
 				B20000000000000000000027 /* Sources/TimeTrackerCore/AccountScopedTimerStore.swift */,
 				B20000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift */,
@@ -357,7 +354,6 @@
 				A10000000000000000000017 /* Sources/TimeTrackerApp/SocialFeedView.swift in Sources */,
 				A10000000000000000000018 /* Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift in Sources */,
 				A10000000000000000000019 /* Sources/TimeTrackerApp/ProductivitySummaryView.swift in Sources */,
-				A10000000000000000000020 /* Sources/TimeTrackerApp/ActivityLogView.swift in Sources */,
 				A10000000000000000000025 /* Sources/TimeTrackerCore/SocialModels.swift in Sources */,
 				A10000000000000000000026 /* Sources/TimeTrackerApp/FollowManagementView.swift in Sources */,
 				A10000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift in Sources */,

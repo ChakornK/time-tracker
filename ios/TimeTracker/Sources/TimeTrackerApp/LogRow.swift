@@ -51,6 +51,22 @@ struct LogRowContent: Identifiable {
         case .synced: nil
         }
     }
+
+    init(entry: FeedEntry, viewerID: UUID) {
+        id = entry.id
+        author = entry.author.id == viewerID
+            ? .you
+            : .person(displayName: entry.author.displayName, username: entry.author.username)
+        title = entry.title
+        notes = entry.notes
+        categories = entry.categories.map { ChartSeries(name: $0.name, color: ChartPalette.color(forHex: $0.colorHex)) }
+        startedAt = entry.startedAt
+        endedAt = entry.endedAt
+        durationSeconds = entry.durationSeconds
+        visibility = entry.visibility
+        time = .relative(entry.createdAt)
+        syncStatus = nil
+    }
 }
 
 struct LogRow: View {

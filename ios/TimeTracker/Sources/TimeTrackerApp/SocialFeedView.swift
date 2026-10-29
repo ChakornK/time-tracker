@@ -48,39 +48,60 @@ final class SocialFeedModel {
 
 }
 
+/// Your logs and the logs of people you follow, newest first. Your logs that haven't synced yet
+/// come from this device and sit at the top until the server has them.
 struct SocialFeedView: View {
     @State private var model: SocialFeedModel
     private let api: TrackerAPIClient
     private let token: String
+    private let viewerID: UUID
+    private let localLogs: [LocalActivityLog]
+    private let categories: [APICategory]
 
-    init(api: TrackerAPIClient, token: String) {
+    init(api: TrackerAPIClient, token: String, viewerID: UUID, localLogs: [LocalActivityLog], categories: [APICategory]) {
         self.api = api
         self.token = token
+        self.viewerID = viewerID
+        self.localLogs = localLogs
+        self.categories = categories
         _model = State(initialValue: SocialFeedModel(api: api, token: token))
+    }
+
+    /// A running timer lives on the Timer tab, and a synced log arrives with the server's feed.
+    private var unsyncedLogs: [LocalActivityLog] {
+        localLogs
+            .filter { $0.syncState == .pending || $0.syncState == .syncing }
+            .sorted { $0.endedAt > $1.endedAt }
     }
 
     var body: some View {
         content
             .task { await model.loadFirstPage() }
-            .navigationTitle("Activity")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink {
-                    FollowManagementView(api: api, token: token)
-                } label: {
-                    Label("People", systemImage: "person.2")
+            // Once a log syncs it leaves the device list, so reload to pick up the server's copy.
+            .onChange(of: unsyncedLogs.map(\.id)) { old, new in
+                if new.count < old.count {
+                    Task { await model.loadFirstPage() }
                 }
-                .accessibilityLabel("Manage people you follow")
             }
-        }
+            .navigationTitle("Feed")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        FollowManagementView(api: api, token: token)
+                    } label: {
+                        Label("People", systemImage: "person.2")
+                    }
+                    .accessibilityLabel("Manage people you follow")
+                }
+            }
     }
 
     @ViewBuilder
     private var content: some View {
-        if model.isLoading && !model.hasLoaded {
-            ProgressView("Loading activity")
+        if model.isLoading && !model.hasLoaded && unsyncedLogs.isEmpty {
+            ProgressView("Loading feed")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if model.entries.isEmpty, let errorMessage = model.errorMessage {
+        } else if model.entries.isEmpty && unsyncedLogs.isEmpty, let errorMessage = model.errorMessage {
             ContentUnavailableView {
                 Label("Feed unavailable", systemImage: "wifi.exclamationmark")
             } description: {
@@ -89,14 +110,14 @@ struct SocialFeedView: View {
                 Button("Retry") { Task { await model.loadFirstPage() } }
                     .frame(minHeight: 44)
             }
-        } else if model.entries.isEmpty {
+        } else if model.entries.isEmpty && unsyncedLogs.isEmpty {
             // An empty List keeps pull-to-refresh available behind the empty state.
             List {}
                 .overlay {
                     ContentUnavailableView {
-                        Label("No activity yet", systemImage: "clock")
+                        Label("Nothing here yet", systemImage: "clock")
                     } description: {
-                        Text("Follow people to see their public and friends-only activity here.")
+                        Text("Time you log appears here, along with activity from people you follow.")
                     } actions: {
                         NavigationLink {
                             FollowManagementView(api: api, token: token)
@@ -110,8 +131,12 @@ struct SocialFeedView: View {
                 .refreshable { await model.loadFirstPage() }
         } else {
             List {
+                ForEach(unsyncedLogs) { log in
+                    LogRow(content: LogRowContent(log: log, categories: categories, author: .you, time: .relative(log.endedAt)))
+                        .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
+                }
                 ForEach(model.entries) { entry in
-                    FeedEntryRow(entry: entry)
+                    LogRow(content: LogRowContent(entry: entry, viewerID: viewerID))
                         .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
                         .task {
                             if entry.id == model.entries.last?.id {
@@ -125,10 +150,14 @@ struct SocialFeedView: View {
                         .listRowSeparator(.hidden)
                 }
                 if let errorMessage = model.errorMessage {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(errorMessage)
-                        Button("Retry") { Task { await model.loadMore() } }
-                            .frame(minHeight: 44)
+                    StatusBanner(kind: .error, message: errorMessage, actionTitle: "Retry") {
+                        Task {
+                            if model.entries.isEmpty {
+                                await model.loadFirstPage()
+                            } else {
+                                await model.loadMore()
+                            }
+                        }
                     }
                     .listRowSeparator(.hidden)
                 }
@@ -136,55 +165,5 @@ struct SocialFeedView: View {
             .listStyle(.plain)
             .refreshable { await model.loadFirstPage() }
         }
-    }
-}
-
-private struct FeedEntryRow: View {
-    let entry: FeedEntry
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.author.displayName)
-                        .font(.headline)
-                    Text("@\(entry.author.username)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 6)
-                Text(entry.createdAt, style: .relative)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-            }
-
-            Text(entry.title)
-                .font(.title3.weight(.medium))
-                .fixedSize(horizontal: false, vertical: true)
-            if let notes = entry.notes, !notes.isEmpty {
-                Text(notes)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack(spacing: 12) {
-                Label {
-                    DurationText(entry.durationSeconds)
-                } icon: {
-                    Image(systemName: "clock")
-                        .accessibilityHidden(true)
-                }
-                if !entry.categories.isEmpty {
-                    Text(entry.categories.map(\.name).joined(separator: ", "))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
     }
 }

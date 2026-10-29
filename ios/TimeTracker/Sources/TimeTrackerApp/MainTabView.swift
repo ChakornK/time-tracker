@@ -2,9 +2,9 @@ import SwiftUI
 
 struct MainTabView: View {
     private enum Tab: Hashable {
-        case log
         case timer
-        case analytics
+        case feed
+        case insights
         case profile
     }
 
@@ -40,22 +40,28 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
-                ActivityLogView(logs: model.logs, api: session.api, token: token)
-            }
-            .tabItem { Label("Log", systemImage: "list.bullet.rectangle") }
-            .tag(Tab.log)
-
-            NavigationStack {
                 TimerView(model: model)
             }
             .tabItem { Label("Timer", systemImage: "timer") }
             .tag(Tab.timer)
 
             NavigationStack {
+                SocialFeedView(
+                    api: session.api,
+                    token: token,
+                    viewerID: user.id,
+                    localLogs: model.logs,
+                    categories: model.categories.categories
+                )
+            }
+            .tabItem { Label("Feed", systemImage: "person.2") }
+            .tag(Tab.feed)
+
+            NavigationStack {
                 AnalyticsView(logs: model.summaryLogs, categories: model.categories.categories, goals: model.goals.goals)
             }
-            .tabItem { Label("Analytics", systemImage: "chart.bar") }
-            .tag(Tab.analytics)
+            .tabItem { Label("Insights", systemImage: "chart.bar") }
+            .tag(Tab.insights)
 
             NavigationStack {
                 ProfileAndCategoriesView(

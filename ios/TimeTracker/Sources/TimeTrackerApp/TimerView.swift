@@ -7,11 +7,6 @@ struct TimerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("Time Tracker")
-                    .font(.largeTitle.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-
                 if let timer = model.runningTimer {
                     runningTimerCard(timer)
                 } else {
@@ -64,6 +59,7 @@ struct TimerView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle("Timer")
         .alert(
             "Timer could not be saved",
             isPresented: Binding(
