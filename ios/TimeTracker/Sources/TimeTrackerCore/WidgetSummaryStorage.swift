@@ -1,14 +1,58 @@
 import Foundation
 
-public struct WidgetSummarySnapshot: Equatable, Sendable {
-    public let todaySeconds: Int
-    public let weekSeconds: Int
+/// What the app hands the widget: the raw time spans behind today's and this week's totals, so the
+/// widget can recompute them as days and weeks roll over without the app running.
+public struct WidgetSnapshot: Codable, Equatable, Sendable {
+    public struct Interval: Codable, Equatable, Sendable {
+        public let startedAt: Date
+        public let endedAt: Date
+
+        public init(startedAt: Date, endedAt: Date) {
+            self.startedAt = startedAt
+            self.endedAt = endedAt
+        }
+    }
+
+    public struct RunningTimer: Codable, Equatable, Sendable {
+        public let startedAt: Date
+        public let title: String
+        /// The category's stored `#RRGGBB` color, if it still exists.
+        public let colorHex: String?
+
+        public init(startedAt: Date, title: String, colorHex: String?) {
+            self.startedAt = startedAt
+            self.title = title
+            self.colorHex = colorHex
+        }
+    }
+
+    public let intervals: [Interval]
+    public let runningTimer: RunningTimer?
     public let updatedAt: Date
 
-    public init(todaySeconds: Int, weekSeconds: Int, updatedAt: Date) {
-        self.todaySeconds = todaySeconds
-        self.weekSeconds = weekSeconds
+    /// Keeps only logs that can still count toward this week, since weeks only roll forward.
+    public init(
+        logs: [ProductivitySummaryLog],
+        runningTimer: RunningTimer?,
+        updatedAt: Date = .now,
+        calendar: Calendar = .current
+    ) {
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: updatedAt)?.start
+            ?? calendar.startOfDay(for: updatedAt)
+        intervals = logs
+            .filter { $0.endedAt > weekStart && $0.endedAt > $0.startedAt }
+            .map { Interval(startedAt: $0.startedAt, endedAt: $0.endedAt) }
+        self.runningTimer = runningTimer
         self.updatedAt = updatedAt
+    }
+
+    /// Today's and this week's totals as of `now`, which may be days after the snapshot was taken.
+    public func summary(at now: Date, calendar: Calendar = .current) -> ProductivitySummary {
+        ProductivitySummary(
+            logs: intervals.map { ProductivitySummaryLog(startedAt: $0.startedAt, endedAt: $0.endedAt, categoryIDs: []) },
+            now: now,
+            calendar: calendar
+        )
     }
 }
 
@@ -21,30 +65,23 @@ public enum WidgetSummaryStorage {
         UserDefaults(suiteName: sharedGroupID)
     }
 
-    public static func storageKeys(for userID: UUID) -> (today: String, week: String, updatedAt: String) {
-        let prefix = "productivity.\(userID.uuidString)."
-        return (prefix + "todaySeconds", prefix + "weekSeconds", prefix + "updatedAt")
+    static func snapshotKey(for userID: UUID) -> String {
+        "widget.\(userID.uuidString).snapshot"
     }
 
-    public static func activeSnapshot(from defaults: UserDefaults?) -> WidgetSummarySnapshot? {
-        guard let defaults,
-              let userIDString = defaults.string(forKey: activeUserIDKey),
-              let userID = UUID(uuidString: userIDString) else { return nil }
-        let keys = storageKeys(for: userID)
-        guard let updatedAt = defaults.object(forKey: keys.updatedAt) as? Double else { return nil }
-        return WidgetSummarySnapshot(
-            todaySeconds: defaults.integer(forKey: keys.today),
-            weekSeconds: defaults.integer(forKey: keys.week),
-            updatedAt: Date(timeIntervalSince1970: updatedAt)
-        )
+    public static func activeUserID(from defaults: UserDefaults?) -> UUID? {
+        defaults?.string(forKey: activeUserIDKey).flatMap(UUID.init(uuidString:))
     }
 
-    public static func publish(_ summary: ProductivitySummary, for userID: UUID, to defaults: UserDefaults?, updatedAt: Date = .now) {
-        guard let defaults else { return }
-        let keys = storageKeys(for: userID)
-        defaults.set(summary.todaySeconds, forKey: keys.today)
-        defaults.set(summary.weekSeconds, forKey: keys.week)
-        defaults.set(updatedAt.timeIntervalSince1970, forKey: keys.updatedAt)
+    public static func activeSnapshot(from defaults: UserDefaults?) -> WidgetSnapshot? {
+        guard let defaults, let userID = activeUserID(from: defaults),
+              let data = defaults.data(forKey: snapshotKey(for: userID)) else { return nil }
+        return try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
+    }
+
+    public static func publish(_ snapshot: WidgetSnapshot, for userID: UUID, to defaults: UserDefaults?) {
+        guard let defaults, let data = try? JSONEncoder().encode(snapshot) else { return }
+        defaults.set(data, forKey: snapshotKey(for: userID))
         defaults.set(userID.uuidString, forKey: activeUserIDKey)
     }
 

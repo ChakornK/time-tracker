@@ -9,36 +9,51 @@ struct WidgetSummaryStorageTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let firstUser = UUID()
         let secondUser = UUID()
-        let firstDate = Date(timeIntervalSince1970: 1_800_000_000)
-        let secondDate = Date(timeIntervalSince1970: 1_800_000_100)
+        let now = date("2026-02-11T12:00:00Z")
 
-        WidgetSummaryStorage.publish(summary(today: 600, week: 1200, now: firstDate), for: firstUser, to: defaults, updatedAt: firstDate)
-        #expect(WidgetSummaryStorage.activeSnapshot(from: defaults)?.todaySeconds == 600)
+        let first = WidgetSnapshot(logs: [log("2026-02-11T09:00:00Z", "2026-02-11T09:10:00Z")], runningTimer: nil, updatedAt: now, calendar: calendar)
+        WidgetSummaryStorage.publish(first, for: firstUser, to: defaults)
+        #expect(WidgetSummaryStorage.activeSnapshot(from: defaults) == first)
 
-        WidgetSummaryStorage.publish(summary(today: 60, week: 300, now: secondDate), for: secondUser, to: defaults, updatedAt: secondDate)
-        let current = WidgetSummaryStorage.activeSnapshot(from: defaults)
-        #expect(current?.todaySeconds == 60)
-        #expect(current?.weekSeconds == 300)
-        #expect(current?.updatedAt == secondDate)
+        let running = WidgetSnapshot.RunningTimer(startedAt: now, title: "Reading", colorHex: "#2A78D6")
+        let second = WidgetSnapshot(logs: [], runningTimer: running, updatedAt: now, calendar: calendar)
+        WidgetSummaryStorage.publish(second, for: secondUser, to: defaults)
+        #expect(WidgetSummaryStorage.activeSnapshot(from: defaults) == second)
+        #expect(WidgetSummaryStorage.activeUserID(from: defaults) == secondUser)
 
         WidgetSummaryStorage.clearActiveUser(from: defaults)
         #expect(WidgetSummaryStorage.activeSnapshot(from: defaults) == nil)
     }
 
-    @Test func summaryKeysAreDifferentForDifferentAccounts() {
-        let first = WidgetSummaryStorage.storageKeys(for: UUID())
-        let second = WidgetSummaryStorage.storageKeys(for: UUID())
-        #expect(first.today != second.today)
-        #expect(first.week != second.week)
+    @Test func snapshotDropsLogsThatCanNoLongerCountThisWeek() {
+        // Wednesday; the test calendar's week starts on Sunday the 8th.
+        let snapshot = WidgetSnapshot(
+            logs: [
+                log("2026-02-06T09:00:00Z", "2026-02-06T10:00:00Z"),
+                log("2026-02-07T23:00:00Z", "2026-02-08T01:00:00Z"),
+                log("2026-02-11T09:00:00Z", "2026-02-11T10:00:00Z"),
+            ],
+            runningTimer: nil,
+            updatedAt: date("2026-02-11T12:00:00Z"),
+            calendar: calendar
+        )
+
+        #expect(snapshot.intervals.count == 2)
+        // The log that crosses into Sunday counts only its hour inside the week.
+        #expect(snapshot.summary(at: date("2026-02-11T12:00:00Z"), calendar: calendar).weekSeconds == 2 * 3_600)
     }
 
-    private func summary(today: Int, week: Int, now: Date) -> ProductivitySummary {
+    private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
-        return ProductivitySummary(logs: [
-            ProductivitySummaryLog(startedAt: now.addingTimeInterval(-Double(today)), endedAt: now, categoryIDs: []),
-            ProductivitySummaryLog(startedAt: yesterday.addingTimeInterval(-Double(week - today)), endedAt: yesterday, categoryIDs: []),
-        ], now: now, calendar: calendar)
+        return calendar
+    }
+
+    private func log(_ start: String, _ end: String) -> ProductivitySummaryLog {
+        ProductivitySummaryLog(startedAt: date(start), endedAt: date(end), categoryIDs: [])
+    }
+
+    private func date(_ value: String) -> Date {
+        ISO8601DateFormatter().date(from: value)!
     }
 }

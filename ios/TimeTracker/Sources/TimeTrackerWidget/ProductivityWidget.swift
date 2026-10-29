@@ -15,8 +15,14 @@ struct ProductivityWidgetProvider: TimelineProvider {
         completion(currentEntry())
     }
 
+    /// One entry for now and one for the next midnight, so Today and This week reset on their own.
+    /// The app reloads the timeline whenever its data changes.
     func getTimeline(in context: Context, completion: @escaping (Timeline<ProductivityWidgetEntry>) -> Void) {
-        completion(Timeline(entries: [currentEntry()], policy: .after(.now.addingTimeInterval(3600))))
+        let snapshot = WidgetSummaryStorage.activeSnapshot(from: WidgetSummaryStorage.sharedDefaults)
+        let now = Date.now
+        let midnight = WidgetTimelineEntry.nextRollover(after: now)
+        let entries = [now, midnight].map { ProductivityWidgetEntry(summary: WidgetTimelineEntry(date: $0, snapshot: snapshot)) }
+        completion(Timeline(entries: entries, policy: .after(midnight)))
     }
 
     private func currentEntry() -> ProductivityWidgetEntry {

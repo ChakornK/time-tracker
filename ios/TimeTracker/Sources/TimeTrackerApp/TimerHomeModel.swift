@@ -150,6 +150,7 @@ final class TimerHomeModel {
             return
         }
         runningTimer = timer
+        publishWidgetSummary()
         timerNotes = ""
         lastSavedDurationSeconds = nil
         errorMessage = nil
@@ -306,10 +307,19 @@ final class TimerHomeModel {
         }
     }
 
+    /// Hands the widget every finished log, synced or not, so its totals match the app even offline,
+    /// plus the running timer so it can tick.
     private func publishWidgetSummary() {
-        let syncedLogs = logs.filter { $0.syncState == .synced }
-        let summary = ProductivitySummary(logs: summaryLogs(from: syncedLogs))
-        WidgetSummaryStorage.publish(summary, for: userID, to: WidgetSummaryStorage.sharedDefaults)
+        let finished = logs.filter { $0.syncState != .running }
+        let running = runningTimer.map { timer in
+            WidgetSnapshot.RunningTimer(
+                startedAt: timer.startedAt,
+                title: categories.category(withID: timer.categoryIDs.first)?.name ?? timer.title,
+                colorHex: categories.category(withID: timer.categoryIDs.first)?.colorHex
+            )
+        }
+        let snapshot = WidgetSnapshot(logs: summaryLogs(from: finished), runningTimer: running)
+        WidgetSummaryStorage.publish(snapshot, for: userID, to: WidgetSummaryStorage.sharedDefaults)
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetSummaryStorage.widgetKind)
     }
 }
