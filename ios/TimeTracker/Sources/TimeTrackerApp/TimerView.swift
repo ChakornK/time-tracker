@@ -161,32 +161,22 @@ struct TimerView: View {
                     .foregroundStyle(.secondary)
             }
 
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(model.categories.categories) { category in
-                            categoryChip(category)
-                                .id(category.id)
-                        }
-                        Button {
-                            isAddingCategory = true
-                        } label: {
-                            Label("New category", systemImage: "plus")
-                                .font(.subheadline)
-                                .padding(.horizontal, 14)
-                                .frame(minHeight: 44)
-                                .overlay(Capsule().strokeBorder(Color(uiColor: .separator), style: StrokeStyle(lineWidth: 1, dash: [4])))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(model.categories.isCreating)
-                    }
-                    .padding(.vertical, 2)
+            // Wraps onto new rows so every category stays in view, however many there are.
+            FlowLayout(spacing: 8) {
+                ForEach(model.categories.categories) { category in
+                    categoryChip(category)
                 }
-                // A new category is selected as it's added, but its chip lands at the end of the row.
-                .onChange(of: model.selectedCategoryID) { _, id in
-                    guard let id else { return }
-                    withAnimation { proxy.scrollTo(id, anchor: .center) }
+                Button {
+                    isAddingCategory = true
+                } label: {
+                    Label("New category", systemImage: "plus")
+                        .font(.subheadline)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .overlay(Capsule().strokeBorder(Color(uiColor: .separator), style: StrokeStyle(lineWidth: 1, dash: [4])))
                 }
+                .buttonStyle(.plain)
+                .disabled(model.categories.isCreating)
             }
 
             TextField("Notes (optional)", text: $model.timerNotes, axis: .vertical)
