@@ -1,7 +1,7 @@
 import type { Database } from "../db/client.js";
 import { isUniqueViolation, toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
-import type { CreateLogInput, LogReceipt } from "./schemas.js";
+import type { CreateLogInput, LogReceipt, UpdateLogInput } from "./schemas.js";
 
 export class CategoryOwnershipError extends DomainError {
   constructor() {
@@ -12,6 +12,18 @@ export class CategoryOwnershipError extends DomainError {
 export class LogConflictError extends DomainError {
   constructor() {
     super(409, "IDEMPOTENCY_CONFLICT", "Idempotency key is already associated with another log request");
+  }
+}
+
+export class LogNotFoundError extends DomainError {
+  constructor() {
+    super(404, "LOG_NOT_FOUND", "Log not found");
+  }
+}
+
+export class InvalidLogTimesError extends DomainError {
+  constructor() {
+    super(400, "INVALID_LOG_TIMES", "End time must be at or after start time");
   }
 }
 
@@ -84,6 +96,64 @@ export class LogService {
     }
   }
 
+  /** Changes a log the user owns. Another user's log reads as not found, so IDs can't be probed. */
+  async update(userId: string, logId: string, input: UpdateLogInput): Promise<void> {
+    await this.db.transaction().execute(async (transaction) => {
+      const existing = await transaction
+        .selectFrom("logs")
+        .select(["id", "started_at", "ended_at"])
+        .where("id", "=", logId)
+        .where("user_id", "=", userId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!existing) throw new LogNotFoundError();
+
+      const startedAt = input.startedAt ? new Date(input.startedAt) : toDate(existing.started_at);
+      const endedAt = input.endedAt ? new Date(input.endedAt) : toDate(existing.ended_at);
+      if (endedAt < startedAt) throw new InvalidLogTimesError();
+
+      if (input.categoryIds && input.categoryIds.length > 0) {
+        const owned = await transaction
+          .selectFrom("categories")
+          .select("id")
+          .where("user_id", "=", userId)
+          .where("id", "in", input.categoryIds)
+          .execute();
+        if (owned.length !== input.categoryIds.length) throw new CategoryOwnershipError();
+      }
+
+      await transaction
+        .updateTable("logs")
+        .set({
+          ...(input.title !== undefined && { title: input.title }),
+          ...(input.notes !== undefined && { notes: input.notes }),
+          ...(input.startedAt !== undefined && { started_at: startedAt }),
+          ...(input.endedAt !== undefined && { ended_at: endedAt }),
+          ...(input.visibility !== undefined && { visibility: input.visibility }),
+        })
+        .where("id", "=", logId)
+        .execute();
+
+      if (input.categoryIds) {
+        await transaction.deleteFrom("log_categories").where("log_id", "=", logId).execute();
+        if (input.categoryIds.length > 0) {
+          await transaction
+            .insertInto("log_categories")
+            .values(input.categoryIds.map((categoryId) => ({ log_id: logId, category_id: categoryId })))
+            .execute();
+        }
+      }
+    });
+  }
+
+  async delete(userId: string, logId: string): Promise<void> {
+    const deleted = await this.db
+      .deleteFrom("logs")
+      .where("id", "=", logId)
+      .where("user_id", "=", userId)
+      .executeTakeFirst();
+    if (deleted.numDeletedRows === 0n) throw new LogNotFoundError();
+  }
 }
 
 function findLogByIdempotencyKey(db: Database, idempotencyKey: string): Promise<ExistingLog | undefined> {
