@@ -52,12 +52,7 @@ struct MainTabView: View {
             .tag(Tab.timer)
 
             NavigationStack {
-                AnalyticsView(
-                    logs: model.logs,
-                    categories: model.categories.categories,
-                    categoriesLoaded: model.categories.hasLoaded,
-                    goals: model.goals.goals
-                )
+                AnalyticsView(logs: model.summaryLogs, categories: model.categories.categories, goals: model.goals.goals)
             }
             .tabItem { Label("Analytics", systemImage: "chart.bar") }
             .tag(Tab.analytics)
@@ -65,7 +60,7 @@ struct MainTabView: View {
             NavigationStack {
                 ProfileAndCategoriesView(
                     user: session.user ?? user,
-                    logs: model.logs,
+                    logs: model.summaryLogs,
                     categories: model.categories,
                     goals: model.goals,
                     isCategoryAwaitingSync: { [model] in model.categoryIDsAwaitingSync.contains($0) },

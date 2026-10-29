@@ -1,15 +1,11 @@
 import SwiftUI
 
 struct AnalyticsView: View {
-    let logs: [LocalActivityLog]
+    let logs: [ProductivitySummaryLog]
     let categories: [APICategory]
-    let categoriesLoaded: Bool
     let goals: [APIGoal]
 
     var body: some View {
-        let allLogs = logs.map(\.productivitySummaryLog)
-        // Time logged to a deleted category leaves Analytics with it.
-        let summaryLogs = categoriesLoaded ? allLogs.keepingCategories(Set(categories.map(\.id))) : allLogs
         let colors = CategoryColorResolver(categories: categories)
 
         ScrollView {
@@ -17,12 +13,12 @@ struct AnalyticsView: View {
             TimelineView(.everyMinute) { context in
                 VStack(spacing: 16) {
                     if !goals.isEmpty {
-                        GoalsProgressCard(goals: goals, logs: summaryLogs, colors: colors, now: context.date)
+                        GoalsProgressCard(goals: goals, logs: logs, colors: colors, now: context.date)
                     }
-                    CategoryBarChartCard(logs: summaryLogs, colors: colors, now: context.date)
-                    TrackedTimePieCard(logs: summaryLogs, colors: colors, now: context.date)
+                    CategoryBarChartCard(logs: logs, colors: colors, now: context.date)
+                    TrackedTimePieCard(logs: logs, colors: colors, now: context.date)
                     ProductivitySummaryView(
-                        summary: ProductivitySummary(logs: summaryLogs, now: context.date),
+                        summary: ProductivitySummary(logs: logs, now: context.date),
                         hasRecordedLogs: !logs.isEmpty,
                         categories: categories
                     )

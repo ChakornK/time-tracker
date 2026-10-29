@@ -65,6 +65,19 @@ final class TimerHomeModel {
         if selectedCategoryID == categoryID {
             selectedCategoryID = categories.categories.first?.id
         }
+        publishWidgetSummary()
+    }
+
+    /// Logs as Analytics, goals, and the widget count them: time logged to a deleted category is left out.
+    var summaryLogs: [ProductivitySummaryLog] {
+        summaryLogs(from: logs)
+    }
+
+    private func summaryLogs(from logs: [LocalActivityLog]) -> [ProductivitySummaryLog] {
+        let all = logs.map(\.productivitySummaryLog)
+        // Until categories load, an empty list would look like every category was deleted.
+        guard categories.hasLoaded else { return all }
+        return all.keepingCategories(Set(categories.categories.map(\.id)))
     }
 
     var canStart: Bool {
@@ -218,6 +231,7 @@ final class TimerHomeModel {
             if categories.category(withID: selectedCategoryID) == nil {
                 selectedCategoryID = categories.categories.first?.id
             }
+            publishWidgetSummary()
         } catch let error as APIClientError where error.isUnauthorized {
             expireSession()
         } catch {
@@ -252,7 +266,7 @@ final class TimerHomeModel {
 
     private func publishWidgetSummary() {
         let syncedLogs = logs.filter { $0.syncState == .synced }
-        let summary = ProductivitySummary(logs: syncedLogs.map(\.productivitySummaryLog))
+        let summary = ProductivitySummary(logs: summaryLogs(from: syncedLogs))
         WidgetSummaryStorage.publish(summary, for: userID, to: WidgetSummaryStorage.sharedDefaults)
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetSummaryStorage.widgetKind)
     }

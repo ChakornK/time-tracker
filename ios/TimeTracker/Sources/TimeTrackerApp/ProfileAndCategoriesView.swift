@@ -164,7 +164,7 @@ struct ProfileAndCategoriesView: View {
     }
 
     let user: APIUser
-    let logs: [LocalActivityLog]
+    let logs: [ProductivitySummaryLog]
     @State private var model: ProfileAndCategoriesModel
     @State private var goalSheet: GoalSheet?
     @State private var renamingCategory: APICategory?
@@ -173,7 +173,7 @@ struct ProfileAndCategoriesView: View {
 
     init(
         user: APIUser,
-        logs: [LocalActivityLog],
+        logs: [ProductivitySummaryLog],
         categories: CategoryStore,
         goals: GoalStore,
         isCategoryAwaitingSync: @escaping (UUID) -> Bool,
@@ -191,8 +191,6 @@ struct ProfileAndCategoriesView: View {
 
     var body: some View {
         let colors = CategoryColorResolver(categories: model.categories.categories)
-        let summaryLogs = logs.map(\.productivitySummaryLog)
-
         Form {
             Section {
                 VStack(alignment: .leading, spacing: 2) {
@@ -219,7 +217,7 @@ struct ProfileAndCategoriesView: View {
                             // minute so goals reset when their day, week, or month ends.
                             TimelineView(.everyMinute) { context in
                                 GoalProgressRow(
-                                    progress: GoalProgress(goal: goal, logs: summaryLogs, now: context.date),
+                                    progress: GoalProgress(goal: goal, logs: logs, now: context.date),
                                     series: colors.series(for: goal.categoryId)
                                 )
                             }
