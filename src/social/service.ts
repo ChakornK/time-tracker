@@ -80,9 +80,9 @@ export class SocialService {
     }));
   }
 
-  getFeedPage(userId: string, query: FeedQuery): Promise<FeedPage> {
-    return getFeedFromDatabase(this.db, userId, query)
-      .then(({ rows, hasMore }) => pageFromRows(rows, hasMore));
+  async getFeedPage(userId: string, query: FeedQuery): Promise<FeedPage> {
+    const { rows, hasMore } = await getFeedFromDatabase(this.db, userId, query);
+    return pageFromRows(rows, hasMore);
   }
 
 }
