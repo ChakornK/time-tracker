@@ -43,6 +43,21 @@ public final class AccountScopedTimerStore: TimerStoreProtocol {
         return try store.updateTimerNotes(timerID: timerID, userID: userID, notes: notes)
     }
 
+    public func discardTimer(timerID: UUID, userID requestedUserID: UUID) throws {
+        try verify(requestedUserID)
+        try store.discardTimer(timerID: timerID, userID: userID)
+    }
+
+    public func updateLog(id: UUID, userID requestedUserID: UUID, edit: LogEdit) throws {
+        try verify(requestedUserID)
+        try store.updateLog(id: id, userID: userID, edit: edit)
+    }
+
+    public func deleteLog(id: UUID, userID requestedUserID: UUID) throws {
+        try verify(requestedUserID)
+        try store.deleteLog(id: id, userID: userID)
+    }
+
     public func currentTimer(userID requestedUserID: UUID) throws -> RunningTimer? {
         try verify(requestedUserID)
         return try store.currentTimer(userID: userID)
@@ -92,9 +107,9 @@ public final class AccountScopedTimerStore: TimerStoreProtocol {
         try store.markSynced(idempotencyKey: idempotencyKey, userID: userID, serverID: serverID)
     }
 
-    public func recordAttempt(idempotencyKey: UUID, userID requestedUserID: UUID, failure: String) throws {
+    public func recordAttempt(idempotencyKey: UUID, userID requestedUserID: UUID, failure: String, rejected: Bool) throws {
         try verify(requestedUserID)
-        try store.recordAttempt(idempotencyKey: idempotencyKey, userID: userID, failure: failure)
+        try store.recordAttempt(idempotencyKey: idempotencyKey, userID: userID, failure: failure, rejected: rejected)
     }
 
     public func addCompletedLog(

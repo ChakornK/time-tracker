@@ -55,6 +55,8 @@ public final class StoredActivityLog {
     public var serverID: UUID?
     public var retryCount: Int
     public var lastSyncError: String?
+    /// Optional so stores written before it existed migrate without a default.
+    public var rejectedByServer: Bool?
     public var userID: UUID?
 
     public init(log: LocalActivityLog) throws {
@@ -71,6 +73,7 @@ public final class StoredActivityLog {
         serverID = log.serverID
         retryCount = log.retryCount
         lastSyncError = log.lastSyncError
+        rejectedByServer = log.rejectedByServer
     }
 
     public var activityLog: LocalActivityLog? {
@@ -95,7 +98,8 @@ public final class StoredActivityLog {
             syncState: syncState,
             serverID: serverID,
             retryCount: retryCount,
-            lastSyncError: lastSyncError
+            lastSyncError: lastSyncError,
+            rejectedByServer: rejectedByServer ?? false
         )
     }
 }
@@ -109,6 +113,7 @@ public enum TimerStoreError: Error, Equatable {
     case invalidStoredTimer
     case invalidStoredLog
     case invalidTimeRange
+    case logAwaitingSync
 }
 
 extension TimerStoreError: LocalizedError {
@@ -122,6 +127,7 @@ extension TimerStoreError: LocalizedError {
         case .invalidStoredTimer: "The saved timer is unreadable."
         case .invalidStoredLog: "A saved log is unreadable."
         case .invalidTimeRange: "The end time is before the start time."
+        case .logAwaitingSync: "This log is still being sent. Try again once it has synced."
         }
     }
 }
@@ -154,6 +160,13 @@ public protocol TimerStoreProtocol {
     func stop(timerID: UUID, userID: UUID, endedAt: Date) throws -> LocalActivityLog
     /// Replaces a running timer's notes; they carry into the log when the timer stops.
     func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer
+    /// Throws away a running timer without saving a log, for one started by mistake.
+    func discardTimer(timerID: UUID, userID: UUID) throws
+    /// Changes a finished log on this device. Throws `logAwaitingSync` when its `changeRoute` says to
+    /// wait; a synced log should already have been changed on the server.
+    func updateLog(id: UUID, userID: UUID, edit: LogEdit) throws
+    /// Removes a finished log from this device, with the same rule as `updateLog`.
+    func deleteLog(id: UUID, userID: UUID) throws
     func currentTimer(userID: UUID) throws -> RunningTimer?
     func pendingLogs(userID: UUID) throws -> [LocalActivityLog]
     func allLogs(userID: UUID) throws -> [LocalActivityLog]
@@ -161,7 +174,8 @@ public protocol TimerStoreProtocol {
     func markSyncing(idempotencyKey: UUID, userID: UUID) throws
     func updatePendingLog(idempotencyKey: UUID, userID: UUID, title: String, notes: String?, categoryIDs: [UUID], visibility: ActivityVisibility) throws
     func markSynced(idempotencyKey: UUID, userID: UUID, serverID: UUID) throws
-    func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String) throws
+    /// `rejected` means the server definitely didn't store the log, as opposed to an unknown outcome.
+    func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String, rejected: Bool) throws
     /// Saves a finished log entered by hand; it syncs like a log from a stopped timer.
     func addCompletedLog(
         userID: UUID,
@@ -253,6 +267,46 @@ public final class SwiftDataTimerStore: TimerStoreProtocol {
         return timer
     }
 
+    public func discardTimer(timerID: UUID, userID: UUID) throws {
+        let descriptor = FetchDescriptor<StoredTimer>(
+            predicate: #Predicate { $0.id == timerID && $0.userID == userID }
+        )
+        guard let storedTimer = try modelContext.fetch(descriptor).first else {
+            throw TimerStoreError.timerNotFound
+        }
+        modelContext.delete(storedTimer)
+        try modelContext.save()
+    }
+
+    public func updateLog(id: UUID, userID: UUID, edit: LogEdit) throws {
+        guard edit.endedAt >= edit.startedAt else { throw TimerStoreError.invalidTimeRange }
+        let stored = try changeableLog(id: id, userID: userID)
+        stored.title = edit.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        stored.notes = edit.notes
+        stored.startedAt = edit.startedAt
+        stored.endedAt = edit.endedAt
+        stored.categoryIDsData = try CategoryIDCoding.encode(edit.categoryIDs)
+        stored.visibilityRawValue = edit.visibility.rawValue
+        try modelContext.save()
+    }
+
+    public func deleteLog(id: UUID, userID: UUID) throws {
+        modelContext.delete(try changeableLog(id: id, userID: userID))
+        try modelContext.save()
+    }
+
+    private func changeableLog(id: UUID, userID: UUID) throws -> StoredActivityLog {
+        var descriptor = FetchDescriptor<StoredActivityLog>(
+            predicate: #Predicate { $0.id == id && $0.userID == userID }
+        )
+        descriptor.fetchLimit = 1
+        guard let stored = try modelContext.fetch(descriptor).first, let log = stored.activityLog else {
+            throw TimerStoreError.invalidStoredLog
+        }
+        guard log.changeRoute != .waitForSync else { throw TimerStoreError.logAwaitingSync }
+        return stored
+    }
+
     public func currentTimer(userID: UUID) throws -> RunningTimer? {
         var descriptor = FetchDescriptor<StoredTimer>(
             predicate: #Predicate { $0.userID == userID },
@@ -323,14 +377,16 @@ public final class SwiftDataTimerStore: TimerStoreProtocol {
         stored.syncStateRawValue = syncedState
         stored.serverID = serverID
         stored.lastSyncError = nil
+        stored.rejectedByServer = nil
         try modelContext.save()
     }
 
-    public func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String) throws {
+    public func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String, rejected: Bool) throws {
         let stored = try storedLog(idempotencyKey: idempotencyKey, userID: userID)
         stored.syncStateRawValue = pendingState
         stored.retryCount += 1
         stored.lastSyncError = failure
+        stored.rejectedByServer = rejected
         try modelContext.save()
     }
 

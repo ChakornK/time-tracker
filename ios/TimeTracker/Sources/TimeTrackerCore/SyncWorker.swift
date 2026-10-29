@@ -34,7 +34,7 @@ public struct LogSyncCoordinator {
         logs: [LocalActivityLog],
         api: any LogSyncAPI,
         acknowledge: (UUID, UUID) throws -> Void,
-        recordFailure: (UUID, String) -> Void
+        recordFailure: (UUID, String, Bool) -> Void
     ) async -> SyncReport {
         var report = SyncReport()
 
@@ -44,7 +44,7 @@ public struct LogSyncCoordinator {
                 try acknowledge(log.idempotencyKey, serverID)
                 report.syncedKeys.append(log.idempotencyKey)
             } catch {
-                recordFailure(log.idempotencyKey, error.localizedDescription)
+                recordFailure(log.idempotencyKey, error.localizedDescription, Self.isDefiniteRejection(error))
                 report.failedKeys.append(log.idempotencyKey)
                 if (error as? APIClientError)?.isUnauthorized == true {
                     report.requiresAuthentication = true
@@ -53,6 +53,20 @@ public struct LogSyncCoordinator {
         }
 
         return report
+    }
+
+    /// Whether the server answered and refused the log, so it stored nothing. Network failures,
+    /// timeouts and server errors leave the outcome unknown. A 401 is about the session rather than the
+    /// log, and a 409 means a log with this key already exists.
+    nonisolated static func isDefiniteRejection(_ error: any Error) -> Bool {
+        switch error as? APIClientError {
+        case .invalidFields:
+            true
+        case .server(let statusCode, _):
+            (400..<500).contains(statusCode) && ![401, 408, 409, 429].contains(statusCode)
+        default:
+            false
+        }
     }
 }
 
@@ -90,8 +104,8 @@ public final class OfflineSyncWorker {
             acknowledge: { idempotencyKey, serverID in
                 try store.markSynced(idempotencyKey: idempotencyKey, userID: userID, serverID: serverID)
             },
-            recordFailure: { idempotencyKey, message in
-                try? store.recordAttempt(idempotencyKey: idempotencyKey, userID: userID, failure: message)
+            recordFailure: { idempotencyKey, message, rejected in
+                try? store.recordAttempt(idempotencyKey: idempotencyKey, userID: userID, failure: message, rejected: rejected)
             }
         )
     }

@@ -36,14 +36,14 @@ struct SyncWorkerTests {
                 logs: logs,
                 api: api,
                 acknowledge: { key, _ in acknowledged.append(key) },
-                recordFailure: { key, _ in failures.append(key) }
+                recordFailure: { key, _, _ in failures.append(key) }
             )
             let retryLogs = logs.filter { failures.values.contains($0.idempotencyKey) }
             let second = await coordinator.synchronize(
                 logs: retryLogs,
                 api: api,
                 acknowledge: { key, _ in acknowledged.append(key) },
-                recordFailure: { key, _ in failures.append(key) }
+                recordFailure: { key, _, _ in failures.append(key) }
             )
 
             #expect(first.syncedKeys.isEmpty)
@@ -67,7 +67,7 @@ struct SyncWorkerTests {
                 if key == logs[0].idempotencyKey { throw APIClientError.invalidResponse }
                 acknowledged.append(key)
             },
-            recordFailure: { key, _ in failures.append(key) }
+            recordFailure: { key, _, _ in failures.append(key) }
         )
 
         #expect(report.failedKeys == [logs[0].idempotencyKey])
@@ -88,7 +88,7 @@ struct SyncWorkerTests {
             logs: [log],
             api: UnauthorizedLogSyncAPI(),
             acknowledge: { _, _ in },
-            recordFailure: { _, _ in }
+            recordFailure: { _, _, _ in }
         )
 
         #expect(report.failedKeys == [log.idempotencyKey])
@@ -111,7 +111,7 @@ struct SyncWorkerTests {
             logs: logs,
             api: api,
             acknowledge: { key, serverID in acknowledged.append((key, serverID)) },
-            recordFailure: { key, message in failures.append((key, message)) }
+            recordFailure: { key, message, _ in failures.append((key, message)) }
         )
 
         #expect(report.syncedKeys == [logs[0].idempotencyKey, logs[2].idempotencyKey])
@@ -151,6 +151,9 @@ private final class RecordingTimerStore: TimerStoreProtocol {
     }
 
     func stop(timerID: UUID, userID: UUID, endedAt: Date) throws -> LocalActivityLog { log }
+    func discardTimer(timerID: UUID, userID: UUID) throws {}
+    func updateLog(id: UUID, userID: UUID, edit: LogEdit) throws {}
+    func deleteLog(id: UUID, userID: UUID) throws {}
     func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer {
         throw TimerStoreError.noRunningTimer
     }
@@ -175,7 +178,7 @@ private final class RecordingTimerStore: TimerStoreProtocol {
         transitionUserIDs.append(userID)
     }
 
-    func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String) throws {
+    func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String, rejected: Bool) throws {
         transitionUserIDs.append(userID)
     }
 

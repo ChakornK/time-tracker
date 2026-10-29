@@ -16,6 +16,12 @@ struct AccountScopedTimerStoreTests {
             try store.updateTimerNotes(timerID: UUID(), userID: otherID, notes: "Not mine")
         }
         #expect(throws: TimerStoreError.accountMismatch) {
+            try store.deleteLog(id: UUID(), userID: otherID)
+        }
+        #expect(throws: TimerStoreError.accountMismatch) {
+            try store.discardTimer(timerID: UUID(), userID: otherID)
+        }
+        #expect(throws: TimerStoreError.accountMismatch) {
             try store.pendingLogs(userID: otherID)
         }
         #expect(throws: TimerStoreError.accountMismatch) {
@@ -64,6 +70,9 @@ private final class EmptyTimerStore: TimerStoreProtocol {
         LocalActivityLog(userID: userID, title: "", notes: nil, startedAt: endedAt, endedAt: endedAt, categoryIDs: [], visibility: .private)
     }
 
+    func discardTimer(timerID: UUID, userID: UUID) throws {}
+    func updateLog(id: UUID, userID: UUID, edit: LogEdit) throws {}
+    func deleteLog(id: UUID, userID: UUID) throws {}
     func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer {
         guard var timer, timer.id == timerID, timer.userID == userID else { throw TimerStoreError.timerNotFound }
         timer.notes = notes
@@ -78,7 +87,7 @@ private final class EmptyTimerStore: TimerStoreProtocol {
     func markSyncing(idempotencyKey: UUID, userID: UUID) throws {}
     func updatePendingLog(idempotencyKey: UUID, userID: UUID, title: String, notes: String?, categoryIDs: [UUID], visibility: ActivityVisibility) throws {}
     func markSynced(idempotencyKey: UUID, userID: UUID, serverID: UUID) throws {}
-    func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String) throws {}
+    func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String, rejected: Bool) throws {}
     func addCompletedLog(userID: UUID, title: String, notes: String?, categoryIDs: [UUID], visibility: ActivityVisibility, startedAt: Date, endedAt: Date) throws -> LocalActivityLog {
         LocalActivityLog(userID: userID, title: title, notes: notes, startedAt: startedAt, endedAt: endedAt, categoryIDs: categoryIDs, visibility: visibility)
     }

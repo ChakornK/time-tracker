@@ -217,6 +217,17 @@ public struct TrackerAPIClient: Sendable {
         _ = try await perform(makeRequest(.delete, "goals/\(id.uuidString)", token: accessToken))
     }
 
+    // MARK: Logs
+
+    public func updateLog(id: UUID, edit: LogEdit, accessToken: String) async throws {
+        let request = try makeRequest(.patch, "logs/\(id.uuidString)", body: UpdateLogPayload(edit: edit), token: accessToken)
+        _ = try await perform(request)
+    }
+
+    public func deleteLog(id: UUID, accessToken: String) async throws {
+        _ = try await perform(makeRequest(.delete, "logs/\(id.uuidString)", token: accessToken))
+    }
+
     // MARK: Social
 
     public func searchUsers(username: String, accessToken: String) async throws -> [SocialUser] {
@@ -380,6 +391,25 @@ private struct CreateLogPayload: Encodable {
         endedAt = log.endedAt
         categoryIds = log.categoryIDs
         visibility = log.visibility
+    }
+}
+
+/// Sends every field, with `notes` as an explicit `null` when cleared, so the server matches the edit.
+private struct UpdateLogPayload: Encodable {
+    let edit: LogEdit
+
+    enum CodingKeys: String, CodingKey {
+        case title, notes, startedAt, endedAt, categoryIds, visibility
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(edit.title, forKey: .title)
+        try container.encode(LogNotes.cleaned(edit.notes), forKey: .notes)
+        try container.encode(edit.startedAt, forKey: .startedAt)
+        try container.encode(edit.endedAt, forKey: .endedAt)
+        try container.encode(edit.categoryIDs, forKey: .categoryIds)
+        try container.encode(edit.visibility, forKey: .visibility)
     }
 }
 

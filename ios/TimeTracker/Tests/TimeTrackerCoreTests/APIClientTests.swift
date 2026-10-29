@@ -184,6 +184,45 @@ struct APIClientTests {
         try await client.deleteGoal(id: goalID, accessToken: "access-token")
     }
 
+    @Test func updateLogSendsEveryFieldAndClearsNotesWithNull() async throws {
+        let logID = UUID()
+        let categoryID = UUID()
+        let session = stubbedSession { request in
+            #expect(request.httpMethod == "PATCH")
+            #expect(request.url?.path == "/api/v1/logs/\(logID.uuidString)")
+            let body = try? JSONSerialization.jsonObject(with: requestBodyData(request) ?? Data()) as? [String: Any]
+            #expect(body?["title"] as? String == "Reading")
+            #expect(body?["notes"] is NSNull)
+            #expect(body?["categoryIds"] as? [String] == [categoryID.uuidString])
+            #expect(body?["visibility"] as? String == "private")
+            #expect(body?["startedAt"] != nil && body?["endedAt"] != nil)
+            return response(body: Data(), statusCode: 204)
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+        let edit = LogEdit(
+            title: "Reading",
+            notes: "   ",
+            startedAt: Date(timeIntervalSince1970: 1_800_000_000),
+            endedAt: Date(timeIntervalSince1970: 1_800_003_600),
+            categoryIDs: [categoryID],
+            visibility: .private
+        )
+
+        try await client.updateLog(id: logID, edit: edit, accessToken: "access-token")
+    }
+
+    @Test func deleteLogUsesLogPath() async throws {
+        let logID = UUID()
+        let session = stubbedSession { request in
+            #expect(request.httpMethod == "DELETE")
+            #expect(request.url?.path == "/api/v1/logs/\(logID.uuidString)")
+            return response(body: Data(), statusCode: 204)
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+
+        try await client.deleteLog(id: logID, accessToken: "access-token")
+    }
+
     @Test func updateEmailMapsPasswordAndConflictErrors() async throws {
         let wrongPassword = Data(#"{"error":{"code":"INCORRECT_PASSWORD","message":"no"}}"#.utf8)
         let conflict = Data(#"{"error":{"code":"EMAIL_CONFLICT","message":"taken"}}"#.utf8)

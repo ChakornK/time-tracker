@@ -49,6 +49,78 @@ struct SwiftDataTimerStoreTests {
         #expect(LogNotes.cleaned(String(repeating: "a", count: 10_000))?.count == 10_000)
     }
 
+    @Test func logsNeverSentCanBeChangedButOnesBeingSentWait() throws {
+        let userID = UUID()
+        let store = SwiftDataTimerStore(modelContainer: try makeContainer())
+        let startedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let log = try store.addCompletedLog(
+            userID: userID, title: "Writing", notes: nil, categoryIDs: [], visibility: .public,
+            startedAt: startedAt, endedAt: startedAt.addingTimeInterval(8 * 3_600)
+        )
+        #expect(log.changeRoute == .localOnly)
+
+        // Left running too long: trim it to 90 minutes.
+        let trimmed = LogEdit(title: "Writing", notes: "Forgot to stop", startedAt: startedAt,
+                              endedAt: startedAt.addingTimeInterval(5_400), categoryIDs: [], visibility: .private)
+        try store.updateLog(id: log.id, userID: userID, edit: trimmed)
+        let stored = try #require(try store.allLogs(userID: userID).first)
+        #expect(stored.durationSeconds == 5_400)
+        #expect(stored.notes == "Forgot to stop")
+        #expect(stored.visibility == .private)
+        #expect(throws: TimerStoreError.invalidTimeRange) {
+            try store.updateLog(id: log.id, userID: userID, edit: LogEdit(
+                title: "Writing", notes: nil, startedAt: startedAt, endedAt: startedAt.addingTimeInterval(-1),
+                categoryIDs: [], visibility: .public))
+        }
+
+        // Once a send has been attempted, a changed retry could clash with what reached the server.
+        try store.markSyncing(idempotencyKey: log.idempotencyKey, userID: userID)
+        #expect(try store.allLogs(userID: userID).first?.changeRoute == .waitForSync)
+        #expect(throws: TimerStoreError.logAwaitingSync) { try store.deleteLog(id: log.id, userID: userID) }
+
+        // Synced logs are changed on the server first and then mirrored here.
+        let serverID = UUID()
+        try store.markSynced(idempotencyKey: log.idempotencyKey, userID: userID, serverID: serverID)
+        #expect(try store.allLogs(userID: userID).first?.changeRoute == .server(id: serverID))
+        #expect(throws: TimerStoreError.invalidStoredLog) { try store.deleteLog(id: log.id, userID: UUID()) }
+        try store.deleteLog(id: log.id, userID: userID)
+        #expect(try store.allLogs(userID: userID).isEmpty)
+    }
+
+    @Test func discardingATimerSavesNoLog() throws {
+        let userID = UUID()
+        let store = SwiftDataTimerStore(modelContainer: try makeContainer())
+        let timer = try store.start(userID: userID, title: "Oops", startedAt: .now)
+
+        try store.discardTimer(timerID: timer.id, userID: userID)
+
+        #expect(try store.currentTimer(userID: userID) == nil)
+        #expect(try store.allLogs(userID: userID).isEmpty)
+        #expect(throws: TimerStoreError.timerNotFound) { try store.discardTimer(timerID: timer.id, userID: userID) }
+    }
+
+    @Test func failedSendsMustSyncBeforeChanging() {
+        var log = LocalActivityLog(title: "Reading", notes: nil, startedAt: .now, endedAt: .now, categoryIDs: [], visibility: .public)
+        #expect(log.changeRoute == .localOnly)
+        log.retryCount = 1
+        #expect(log.changeRoute == .waitForSync)
+        log.retryCount = 0
+        log.lastSyncError = "offline"
+        #expect(log.changeRoute == .waitForSync)
+        // A definite rejection means the server has no copy, so the log can be fixed here.
+        log.rejectedByServer = true
+        #expect(log.changeRoute == .localOnly)
+    }
+
+    @Test func onlyAnsweredRefusalsCountAsRejections() {
+        #expect(LogSyncCoordinator.isDefiniteRejection(APIClientError.server(statusCode: 400, code: "INVALID_CATEGORIES")))
+        #expect(LogSyncCoordinator.isDefiniteRejection(APIClientError.invalidFields(["Title is required"])))
+        #expect(!LogSyncCoordinator.isDefiniteRejection(APIClientError.server(statusCode: 409, code: "IDEMPOTENCY_CONFLICT")))
+        #expect(!LogSyncCoordinator.isDefiniteRejection(APIClientError.server(statusCode: 401, code: "UNAUTHORIZED")))
+        #expect(!LogSyncCoordinator.isDefiniteRejection(APIClientError.server(statusCode: 503, code: "UNAVAILABLE")))
+        #expect(!LogSyncCoordinator.isDefiniteRejection(URLError(.timedOut)))
+    }
+
     @Test func manualLogIsSavedPendingSyncAndRejectsEmptyRanges() throws {
         let userID = UUID()
         let categoryID = UUID()
