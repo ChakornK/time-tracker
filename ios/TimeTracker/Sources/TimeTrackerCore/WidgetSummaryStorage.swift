@@ -83,6 +83,10 @@ public enum WidgetSummaryStorage {
         guard let defaults, let data = try? JSONEncoder().encode(snapshot) else { return }
         defaults.set(data, forKey: snapshotKey(for: userID))
         defaults.set(userID.uuidString, forKey: activeUserIDKey)
+        // Totals stored before snapshots existed; nothing reads them anymore.
+        for legacy in ["todaySeconds", "weekSeconds", "updatedAt"] {
+            defaults.removeObject(forKey: "productivity.\(userID.uuidString).\(legacy)")
+        }
     }
 
     public static func clearActiveUser(from defaults: UserDefaults?) {
