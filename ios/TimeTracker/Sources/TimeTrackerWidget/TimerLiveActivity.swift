@@ -20,14 +20,17 @@ struct TimerLiveActivity: Widget {
                             .font(.headline)
                             .lineLimit(1)
                     }
-                    .padding(.leading, 4)
+                    // The expanded island's rounded corners crowd anything placed at its edges.
+                    .padding(.leading, 12)
+                    .padding(.top, 8)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     context.state.elapsedText
                         .font(.title3.monospacedDigit())
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 110, alignment: .trailing)
-                        .padding(.trailing, 4)
+                        .padding(.trailing, 12)
+                        .padding(.top, 8)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     Button(intent: StopTimerIntent(timerID: context.attributes.timerID)) {
@@ -36,11 +39,14 @@ struct TimerLiveActivity: Widget {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.red)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 8)
                 }
             } compactLeading: {
                 Circle()
                     .fill(context.state.categoryColor)
                     .frame(width: 10, height: 10)
+                    .padding(.leading, 6)
                     .accessibilityLabel(context.state.activityTitle)
             } compactTrailing: {
                 // Wide enough for "1:23:45" once a timer passes an hour.
