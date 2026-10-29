@@ -160,27 +160,8 @@ struct TimerView: View {
 
     private var startTimerCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Choose an activity")
-                    .font(.headline)
-                Spacer()
-                if !model.categories.categories.isEmpty {
-                    Button {
-                        withAnimation(.snappy) { isShowingAllCategories.toggle() }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(isShowingAllCategories ? "Hide" : "All categories")
-                            Image(systemName: "chevron.down")
-                                .imageScale(.small)
-                                .rotationEffect(.degrees(isShowingAllCategories ? 180 : 0))
-                                .accessibilityHidden(true)
-                        }
-                        .font(.subheadline)
-                    }
-                    .frame(minHeight: 44)
-                    .accessibilityValue(isShowingAllCategories ? "Expanded" : "Collapsed")
-                }
-            }
+            Text("Choose an activity")
+                .font(.headline)
 
             if model.categories.categories.isEmpty {
                 Text("Add a category to get started, such as a course, reading, exercise, or project.")
@@ -207,18 +188,16 @@ struct TimerView: View {
                     .buttonStyle(.plain)
                     .disabled(model.categories.isCreating)
                 }
+                if !model.categories.categories.isEmpty {
+                    categoriesToggle
+                }
             } else {
-                HStack(spacing: 8) {
+                // Wraps the toggle under the chip when a long name or large text leaves no room beside it.
+                FlowLayout(spacing: 12) {
                     if let category = model.categories.category(withID: model.selectedCategoryID) {
                         categoryChip(category)
-                    } else {
-                        Button("Choose a category") {
-                            withAnimation(.snappy) { isShowingAllCategories = true }
-                        }
-                        .font(.subheadline)
-                        .frame(minHeight: 44)
                     }
-                    Spacer(minLength: 0)
+                    categoriesToggle
                 }
             }
 
@@ -246,6 +225,24 @@ struct TimerView: View {
             .disabled(!model.canStart)
         }
         .cardStyle()
+    }
+
+    /// Opens or closes the full category list. Sits beside the chosen category, or under the list.
+    private var categoriesToggle: some View {
+        Button {
+            withAnimation(.snappy) { isShowingAllCategories.toggle() }
+        } label: {
+            HStack(spacing: 4) {
+                Text(isShowingAllCategories ? "Hide categories" : "Show all categories")
+                Image(systemName: "chevron.down")
+                    .imageScale(.small)
+                    .rotationEffect(.degrees(isShowingAllCategories ? 180 : 0))
+                    .accessibilityHidden(true)
+            }
+            .font(.subheadline)
+            .lineLimit(1)
+        }
+        .frame(minHeight: 44)
     }
 
     private func categoryChip(_ category: APICategory) -> some View {
