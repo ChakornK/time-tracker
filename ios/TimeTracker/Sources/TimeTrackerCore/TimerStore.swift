@@ -152,6 +152,8 @@ public protocol TimerStoreProtocol {
         startedAt: Date
     ) throws -> RunningTimer
     func stop(timerID: UUID, userID: UUID, endedAt: Date) throws -> LocalActivityLog
+    /// Replaces a running timer's notes; they carry into the log when the timer stops.
+    func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer
     func currentTimer(userID: UUID) throws -> RunningTimer?
     func pendingLogs(userID: UUID) throws -> [LocalActivityLog]
     func allLogs(userID: UUID) throws -> [LocalActivityLog]
@@ -233,6 +235,21 @@ public final class SwiftDataTimerStore: TimerStoreProtocol {
         modelContext.delete(storedTimer)
         try modelContext.save()
         return log
+    }
+
+    public func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer {
+        let descriptor = FetchDescriptor<StoredTimer>(
+            predicate: #Predicate { $0.id == timerID && $0.userID == userID }
+        )
+        guard let storedTimer = try modelContext.fetch(descriptor).first else {
+            throw TimerStoreError.timerNotFound
+        }
+        storedTimer.notes = notes
+        guard let timer = storedTimer.runningTimer else {
+            throw TimerStoreError.invalidStoredTimer
+        }
+        try modelContext.save()
+        return timer
     }
 
     public func currentTimer(userID: UUID) throws -> RunningTimer? {

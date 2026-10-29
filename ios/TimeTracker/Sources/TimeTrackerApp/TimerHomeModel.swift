@@ -22,6 +22,8 @@ final class TimerHomeModel {
     private(set) var activityState: TimerActivityAttributes.ContentState?
     var selectedCategoryID: UUID?
     var newCategoryName = ""
+    /// Notes for the next timer, entered before it starts.
+    var timerNotes = ""
     var visibility: ActivityVisibility = .public
     var errorMessage: String?
     var stopFailureMessage: String?
@@ -112,7 +114,7 @@ final class TimerHomeModel {
             timer = try store.start(
                 userID: userID,
                 title: category.name,
-                notes: nil,
+                notes: Self.cleanedNotes(timerNotes),
                 categoryIDs: [category.id],
                 visibility: visibility,
                 startedAt: date
@@ -123,6 +125,7 @@ final class TimerHomeModel {
         }
         runningTimer = timer
         selectedCategoryID = nil
+        timerNotes = ""
         lastSavedDurationSeconds = nil
         errorMessage = nil
         await liveActivity.start(for: timer)
@@ -146,6 +149,24 @@ final class TimerHomeModel {
         await synchronize()
     }
 
+    /// Replaces the running timer's notes, which are saved with its log when it stops.
+    func updateNotes(_ notes: String) {
+        guard let timer = runningTimer else { return }
+        do {
+            runningTimer = try store.updateTimerNotes(timerID: timer.id, userID: userID, notes: Self.cleanedNotes(notes))
+            errorMessage = nil
+        } catch {
+            errorMessage = "Notes could not be saved: \(error.localizedDescription)"
+        }
+    }
+
+    /// Trimmed notes, or `nil` when there are none, so an empty field never saves blank notes. Capped
+    /// at the server's 10,000-character limit, since a longer note would make the log fail to sync forever.
+    static func cleanedNotes(_ notes: String?) -> String? {
+        let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : String(trimmed.prefix(10_000))
+    }
+
     /// Saves time the user enters by hand, then syncs it in the background.
     func addManualLog(
         categoryID: UUID,
@@ -161,11 +182,10 @@ final class TimerHomeModel {
         let endedAt = startedAt.addingTimeInterval(duration)
         guard endedAt <= .now else { throw ManualLogError.endsInFuture }
 
-        let trimmedNotes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
         let log = try store.addCompletedLog(
             userID: userID,
             title: category.name,
-            notes: trimmedNotes?.isEmpty == false ? trimmedNotes : nil,
+            notes: Self.cleanedNotes(notes),
             categoryIDs: [category.id],
             visibility: visibility,
             startedAt: startedAt,

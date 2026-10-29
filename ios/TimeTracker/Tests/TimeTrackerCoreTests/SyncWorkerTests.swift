@@ -151,6 +151,9 @@ private final class RecordingTimerStore: TimerStoreProtocol {
     }
 
     func stop(timerID: UUID, userID: UUID, endedAt: Date) throws -> LocalActivityLog { log }
+    func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer {
+        throw TimerStoreError.noRunningTimer
+    }
     func currentTimer(userID: UUID) throws -> RunningTimer? { nil }
 
     func pendingLogs(userID: UUID) throws -> [LocalActivityLog] {

@@ -61,6 +61,13 @@ private final class EmptyTimerStore: TimerStoreProtocol {
         LocalActivityLog(userID: userID, title: "", notes: nil, startedAt: endedAt, endedAt: endedAt, categoryIDs: [], visibility: .private)
     }
 
+    func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer {
+        guard var timer, timer.id == timerID, timer.userID == userID else { throw TimerStoreError.timerNotFound }
+        timer.notes = notes
+        self.timer = timer
+        return timer
+    }
+
     func currentTimer(userID: UUID) throws -> RunningTimer? { timer?.userID == userID ? timer : nil }
     func pendingLogs(userID: UUID) throws -> [LocalActivityLog] { [] }
     func allLogs(userID: UUID) throws -> [LocalActivityLog] { [] }

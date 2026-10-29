@@ -19,6 +19,23 @@ struct SwiftDataTimerStoreTests {
         SwiftDataTimerStore(modelContainer: try makeContainer())
     }
 
+    @Test func notesEditedWhileRunningAreSavedWithTheLog() throws {
+        let userID = UUID()
+        let store = SwiftDataTimerStore(modelContainer: try makeContainer())
+        let startedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let timer = try store.start(userID: userID, title: "Writing", notes: "Outline", startedAt: startedAt)
+
+        let updated = try store.updateTimerNotes(timerID: timer.id, userID: userID, notes: "Outline and first draft")
+
+        #expect(updated.notes == "Outline and first draft")
+        #expect(try store.currentTimer(userID: userID)?.notes == "Outline and first draft")
+        #expect(throws: TimerStoreError.timerNotFound) {
+            try store.updateTimerNotes(timerID: timer.id, userID: UUID(), notes: "Someone else's")
+        }
+        let log = try store.stop(timerID: timer.id, userID: userID, endedAt: startedAt.addingTimeInterval(600))
+        #expect(log.notes == "Outline and first draft")
+    }
+
     @Test func manualLogIsSavedPendingSyncAndRejectsEmptyRanges() throws {
         let userID = UUID()
         let categoryID = UUID()

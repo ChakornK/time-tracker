@@ -4,6 +4,7 @@ struct TimerView: View {
     @Bindable var model: TimerHomeModel
     @State private var isShowingManualLog = false
     @State private var isAddingCategory = false
+    @State private var isEditingNotes = false
 
     var body: some View {
         ScrollView {
@@ -72,6 +73,11 @@ struct TimerView: View {
         .sheet(isPresented: $isShowingManualLog) {
             ManualLogSheet(model: model)
         }
+        .sheet(isPresented: $isEditingNotes) {
+            TimerNotesSheet(notes: model.runningTimer?.notes ?? "") { notes in
+                model.updateNotes(notes)
+            }
+        }
         .alert("New category", isPresented: $isAddingCategory) {
             TextField("Category name", text: $model.newCategoryName)
                 .textInputAutocapitalization(.words)
@@ -119,6 +125,19 @@ struct TimerView: View {
             Label(timer.visibility.label, systemImage: timer.visibility.symbol)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 6) {
+                if let notes = timer.notes {
+                    Text(notes)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button(timer.notes == nil ? "Add notes" : "Edit notes", systemImage: "note.text") {
+                    isEditingNotes = true
+                }
+                .font(.subheadline)
+                .frame(minHeight: 44)
+            }
 
             Button {
                 Task { await model.stop() }
@@ -170,6 +189,13 @@ struct TimerView: View {
                 }
             }
 
+            TextField("Notes (optional)", text: $model.timerNotes, axis: .vertical)
+                .lineLimit(1...4)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .frame(minHeight: 44)
+                .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10))
+
             Picker("Visibility", selection: $model.visibility) {
                 ForEach([ActivityVisibility.public, .friendsOnly, .private], id: \.self) { visibility in
                     Text(visibility.shortLabel).tag(visibility)
@@ -204,6 +230,41 @@ struct TimerView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// Edits the running timer's notes. Changes are kept only when saved.
+private struct TimerNotesSheet: View {
+    @State private var notes: String
+    let onSave: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    init(notes: String, onSave: @escaping (String) -> Void) {
+        _notes = State(initialValue: notes)
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("What are you working on?", text: $notes, axis: .vertical)
+                    .lineLimit(4...12)
+            }
+            .navigationTitle("Notes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(notes)
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 
