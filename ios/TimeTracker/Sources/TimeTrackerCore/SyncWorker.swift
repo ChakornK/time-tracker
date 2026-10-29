@@ -58,6 +58,9 @@ public struct LogSyncCoordinator {
     /// Whether the server answered and refused the log, so it stored nothing. Network failures,
     /// timeouts and server errors leave the outcome unknown. A 401 is about the session rather than the
     /// log, and a 409 means a log with this key already exists.
+    ///
+    /// Relies on `POST /logs` looking up the idempotency key before validating categories, so a retry of
+    /// a log the server already stored gets 200 or 409, never a 400. Keep that order in `LogService.create`.
     nonisolated static func isDefiniteRejection(_ error: any Error) -> Bool {
         switch error as? APIClientError {
         case .invalidFields:

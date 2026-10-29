@@ -282,7 +282,9 @@ public final class SwiftDataTimerStore: TimerStoreProtocol {
         guard edit.endedAt >= edit.startedAt else { throw TimerStoreError.invalidTimeRange }
         let stored = try changeableLog(id: id, userID: userID)
         stored.title = edit.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        stored.notes = edit.notes
+        stored.notes = LogNotes.cleaned(edit.notes)
+        // The old failure no longer describes this log. `rejectedByServer` stays set so it remains editable.
+        stored.lastSyncError = nil
         stored.startedAt = edit.startedAt
         stored.endedAt = edit.endedAt
         stored.categoryIDsData = try CategoryIDCoding.encode(edit.categoryIDs)
@@ -383,10 +385,12 @@ public final class SwiftDataTimerStore: TimerStoreProtocol {
 
     public func recordAttempt(idempotencyKey: UUID, userID: UUID, failure: String, rejected: Bool) throws {
         let stored = try storedLog(idempotencyKey: idempotencyKey, userID: userID)
+        // Sticky: one attempt with an unknown outcome may have stored the log, and a later rejection
+        // can't undo that.
+        stored.rejectedByServer = rejected && (stored.retryCount == 0 || stored.rejectedByServer == true)
         stored.syncStateRawValue = pendingState
         stored.retryCount += 1
         stored.lastSyncError = failure
-        stored.rejectedByServer = rejected
         try modelContext.save()
     }
 
