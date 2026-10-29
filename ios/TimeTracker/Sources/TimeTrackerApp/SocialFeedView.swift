@@ -26,6 +26,8 @@ final class SocialFeedModel {
             return
         }
         isLoading = true
+        // This load already includes anything that synced before it, so only later requests replay.
+        needsNewestRefresh = false
         errorMessage = nil
         do {
             let page = try await api.feedPage(accessToken: token)
@@ -57,7 +59,13 @@ final class SocialFeedModel {
             do {
                 let page = try await api.feedPage(accessToken: token)
                 let known = Set(entries.map(\.id))
-                entries.insert(contentsOf: page.items.filter { !known.contains($0.id) }, at: 0)
+                if page.nextCursor != nil && !page.items.contains(where: { known.contains($0.id) }) {
+                    // More than a page arrived since the last load, so there would be a gap below it.
+                    entries = page.items
+                    nextCursor = page.nextCursor
+                } else {
+                    entries.insert(contentsOf: page.items.filter { !known.contains($0.id) }, at: 0)
+                }
                 errorMessage = nil
             } catch {
                 errorMessage = "New activity could not be loaded. Pull to refresh."
@@ -179,7 +187,7 @@ struct SocialFeedView: View {
                         }
                 }
                 if model.isLoadingMore || (!model.hasLoaded && model.entries.isEmpty) {
-                    ProgressView("Loading more activity")
+                    ProgressView(model.hasLoaded ? "Loading more activity" : "Loading feed")
                         .frame(maxWidth: .infinity)
                         .listRowSeparator(.hidden)
                 }
