@@ -191,7 +191,7 @@ struct TimerView: View {
             if isShowingAllCategories || model.categories.categories.isEmpty {
                 // Wraps onto new rows so every category stays in view, however many there are.
                 FlowLayout(spacing: 8) {
-                    ForEach(model.categories.categories) { category in
+                    ForEach(model.categoriesByRecency) { category in
                         categoryChip(category)
                     }
                     Button {

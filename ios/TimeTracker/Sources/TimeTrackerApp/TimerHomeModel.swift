@@ -82,14 +82,30 @@ final class TimerHomeModel {
         return all.keepingCategories(Set(categories.categories.map(\.id)))
     }
 
+    /// Categories with the most recently logged first. Ones never logged follow in their usual order.
+    var categoriesByRecency: [APICategory] {
+        var lastLogged: [UUID: Date] = [:]
+        for log in logs {
+            for id in log.categoryIDs {
+                lastLogged[id] = max(lastLogged[id] ?? .distantPast, log.endedAt)
+            }
+        }
+        return categories.categories.enumerated()
+            .sorted { lhs, rhs in
+                switch (lastLogged[lhs.element.id], lastLogged[rhs.element.id]) {
+                case let (left?, right?) where left != right: left > right
+                case (.some, nil): true
+                case (nil, .some): false
+                default: lhs.offset < rhs.offset
+                }
+            }
+            .map(\.element)
+    }
+
     /// The category of the most recently finished log, so the next timer starts where the last one
-    /// left off. Falls back to the first category when nothing has been logged or that category is gone.
+    /// left off. Falls back to the first category when nothing has been logged.
     private var defaultCategoryID: UUID? {
-        logs.sorted { $0.endedAt > $1.endedAt }
-            .lazy
-            .flatMap(\.categoryIDs)
-            .first { self.categories.category(withID: $0) != nil }
-            ?? categories.categories.first?.id
+        categoriesByRecency.first?.id
     }
 
     var canStart: Bool {
