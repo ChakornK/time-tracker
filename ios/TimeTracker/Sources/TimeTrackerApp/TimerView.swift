@@ -267,7 +267,6 @@ struct TimerView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityHint(isShowingAllCategories ? "" : "Shows all categories")
     }
 }
 
