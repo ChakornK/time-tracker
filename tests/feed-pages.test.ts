@@ -56,6 +56,9 @@ test("the feed combines your logs with friends' logs, newest first, across pages
   const social = new SocialService(database.db);
   const firstPage = await social.getFeedPage(viewerId, { limit: 2 });
   assert.deepEqual(firstPage.items.map((item) => item.title), ["Friend friends-only", "My private"]);
+  // Your own entries carry their idempotency key so your device can match them; others' never do.
+  assert.ok(firstPage.items.find((item) => item.title === "My private")?.idempotencyKey);
+  assert.equal(firstPage.items.find((item) => item.title === "Friend friends-only")?.idempotencyKey, undefined);
   assert.ok(firstPage.nextCursor);
 
   const secondPage = await social.getFeedPage(viewerId, { limit: 2, cursor: firstPage.nextCursor });

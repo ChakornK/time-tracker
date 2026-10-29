@@ -55,6 +55,7 @@ export async function getFeedFromDatabase(
       "logs.duration_seconds",
       "logs.visibility",
       "logs.created_at",
+      "logs.idempotency_key",
       "author.username as author_username",
       "author.display_name as author_display_name",
       "author.avatar_url as author_avatar_url",
@@ -98,6 +99,7 @@ export async function getFeedFromDatabase(
       durationSeconds: row.duration_seconds,
       visibility: row.visibility,
       createdAt: toDate(row.created_at),
+      ...(row.user_id === userId && { idempotencyKey: row.idempotency_key }),
       author: {
         id: row.user_id,
         username: row.author_username,

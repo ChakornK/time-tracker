@@ -20,6 +20,8 @@ export interface FeedEntry {
   durationSeconds: number;
   visibility: "public" | "private" | "friends_only";
   createdAt: Date;
+  /** Only on the viewer's own logs, so their device can match an entry to a log it is still syncing. */
+  idempotencyKey?: string;
   author: {
     id: string;
     username: string;
