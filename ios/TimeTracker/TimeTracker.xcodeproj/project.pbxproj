@@ -24,7 +24,7 @@
 		A10000000000000000000018 /* Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000018 /* Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift */; };
 		A10000000000000000000019 /* Sources/TimeTrackerApp/ProductivitySummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000019 /* Sources/TimeTrackerApp/ProductivitySummaryView.swift */; };
 		A10000000000000000000020 /* Sources/TimeTrackerApp/ActivityLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000020 /* Sources/TimeTrackerApp/ActivityLogView.swift */; };
-		A10000000000000000000021 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift */; };
+		A10000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift */; };
 		A10000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift */; };
 		A10000000000000000000025 /* Sources/TimeTrackerCore/SocialModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000025 /* Sources/TimeTrackerCore/SocialModels.swift */; };
 		A10000000000000000000026 /* Sources/TimeTrackerApp/FollowManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000026 /* Sources/TimeTrackerApp/FollowManagementView.swift */; };
@@ -57,7 +57,7 @@
 		A10000000000000000000068 /* Sources/TimeTrackerApp/GoalProgressViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000068 /* Sources/TimeTrackerApp/GoalProgressViews.swift */; };
 		A10000000000000000000069 /* Sources/TimeTrackerApp/GoalEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000069 /* Sources/TimeTrackerApp/GoalEditorSheet.swift */; };
 		A10000000000000000000070 /* Sources/TimeTrackerApp/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000070 /* Sources/TimeTrackerApp/SettingsView.swift */; };
-		CCDCD77C308F222F00DCF825 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift */; };
+		CCDCD77C308F222F00DCF825 /* Sources/TimeTrackerCore/DurationFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift */; };
 		CCDCD77D308F269900DCF825 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000042 /* WidgetKit.framework */; };
 		CCDCD77E308F269900DCF825 /* WidgetKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000042 /* WidgetKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -116,7 +116,7 @@
 		B20000000000000000000018 /* Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TimeTrackerCore/LocalActivityLog+ProductivitySummary.swift"; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000019 /* Sources/TimeTrackerApp/ProductivitySummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/ProductivitySummaryView.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000020 /* Sources/TimeTrackerApp/ActivityLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/ActivityLogView.swift; sourceTree = SOURCE_ROOT; };
-		B20000000000000000000021 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift; sourceTree = SOURCE_ROOT; };
+		B20000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/DurationFormat.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/ProductivitySummary.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000025 /* Sources/TimeTrackerCore/SocialModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/SocialModels.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000026 /* Sources/TimeTrackerApp/FollowManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/FollowManagementView.swift; sourceTree = SOURCE_ROOT; };
@@ -181,7 +181,7 @@
 			children = (
 				B20000000000000000000001 /* Sources/TimeTrackerApp/TimeTrackerApp.swift */,
 				B20000000000000000000002 /* Sources/TimeTrackerCore/TimerEngine.swift */,
-				B20000000000000000000021 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift */,
+				B20000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift */,
 				B20000000000000000000003 /* Sources/TimeTrackerCore/TimerModels.swift */,
 				B20000000000000000000004 /* Sources/TimeTrackerCore/TimerStore.swift */,
 				B20000000000000000000005 /* Sources/TimeTrackerCore/APIClient.swift */,
@@ -339,7 +339,7 @@
 			files = (
 				A10000000000000000000001 /* Sources/TimeTrackerApp/TimeTrackerApp.swift in Sources */,
 				A10000000000000000000002 /* Sources/TimeTrackerCore/TimerEngine.swift in Sources */,
-				CCDCD77C308F222F00DCF825 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift in Sources */,
+				CCDCD77C308F222F00DCF825 /* Sources/TimeTrackerCore/DurationFormat.swift in Sources */,
 				A10000000000000000000003 /* Sources/TimeTrackerCore/TimerModels.swift in Sources */,
 				A10000000000000000000004 /* Sources/TimeTrackerCore/TimerStore.swift in Sources */,
 				A10000000000000000000005 /* Sources/TimeTrackerCore/APIClient.swift in Sources */,
@@ -390,7 +390,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000040 /* Sources/TimeTrackerWidget/ProductivityWidget.swift in Sources */,
-				A10000000000000000000021 /* Sources/TimeTrackerCore/AnalyticsDurationFormatter.swift in Sources */,
+				A10000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift in Sources */,
 				A10000000000000000000041 /* Sources/TimeTrackerCore/ProductivitySummary.swift in Sources */,
 				A10000000000000000000042 /* Sources/TimeTrackerCore/WidgetSummaryStorage.swift in Sources */,
 				A10000000000000000000046 /* Sources/TimeTrackerCore/WidgetTimelineEntry.swift in Sources */,

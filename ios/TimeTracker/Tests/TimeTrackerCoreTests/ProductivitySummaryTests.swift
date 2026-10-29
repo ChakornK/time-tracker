@@ -4,14 +4,15 @@ import Testing
 
 struct ProductivitySummaryTests {
     @Test(arguments: [
-        (3, false, "3 seconds"),
-        (65, false, "1 minute, 5 seconds"),
-        (3_661, false, "1 hour, 1 minute, 1 second"),
-        (90_061, true, "1 day, 1 hour, 1 minute, 1 second"),
-        (90_061, false, "25 hours, 1 minute, 1 second"),
+        (0, "0m"),
+        (3, "<1m"),
+        (65, "1m"),
+        (3_600, "1h"),
+        (3_661, "1h 1m"),
+        (90_061, "25h 1m"),
     ])
-    func formatsAnalyticsDurations(seconds: Int, includesDays: Bool, expected: String) {
-        #expect(AnalyticsDurationFormatter.format(seconds, includesDays: includesDays) == expected)
+    func formatsCompactDurations(seconds: Int, expected: String) {
+        #expect(DurationFormat.compact(seconds) == expected)
     }
 
     @Test func sharedSummaryModelCalculatesCalendarTotals() {

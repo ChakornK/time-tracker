@@ -50,7 +50,7 @@ struct GoalProgressRow: View {
                         .foregroundStyle(.green)
                         .accessibilityLabel("Goal reached")
                 }
-                Text("\(HoursFormat.duration(progress.trackedSeconds)) / \(HoursFormat.duration(Double(progress.goal.targetSeconds)))")
+                Text("\(DurationFormat.compact(progress.trackedSeconds)) / \(DurationFormat.compact(Double(progress.goal.targetSeconds)))")
                     .font(.subheadline)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)

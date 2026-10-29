@@ -10,9 +10,9 @@ struct ProductivitySummaryView: View {
             Text("Recorded time")
                 .font(.headline)
             if hasRecordedLogs {
-                total(title: "All time", seconds: summary.allTimeSeconds, includesDays: true)
-                total(title: "Today", seconds: summary.todaySeconds, includesDays: false)
-                total(title: "This week", seconds: summary.weekSeconds, includesDays: false)
+                total(title: "All time", seconds: summary.allTimeSeconds)
+                total(title: "Today", seconds: summary.todaySeconds)
+                total(title: "This week", seconds: summary.weekSeconds)
                 if !summary.categorySeconds.isEmpty {
                     Divider()
                     ForEach(categoryTotals, id: \.id) { category in
@@ -20,7 +20,7 @@ struct ProductivitySummaryView: View {
                             Text(category.name)
                                 .lineLimit(1)
                             Spacer(minLength: 8)
-                            Text(AnalyticsDurationFormatter.format(category.seconds, includesDays: false))
+                            Text(DurationFormat.compact(category.seconds))
                                 .monospacedDigit()
                         }
                         .font(.subheadline)
@@ -44,12 +44,12 @@ struct ProductivitySummaryView: View {
             .sorted { $0.seconds != $1.seconds ? $0.seconds > $1.seconds : $0.name < $1.name }
     }
 
-    private func total(title: String, seconds: Int, includesDays: Bool) -> some View {
+    private func total(title: String, seconds: Int) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(AnalyticsDurationFormatter.format(seconds, includesDays: includesDays))
+            Text(DurationFormat.compact(seconds))
                 .font(.body.weight(.semibold).monospacedDigit())
         }
     }

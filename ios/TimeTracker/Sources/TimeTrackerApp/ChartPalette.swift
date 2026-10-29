@@ -57,14 +57,6 @@ struct CategoryColorResolver {
     }
 }
 
-enum HoursFormat {
-    /// "2 hr, 30 min" style text for a span of seconds.
-    static func duration(_ seconds: Double) -> String {
-        guard seconds >= 60 else { return seconds > 0 ? "<1 min" : "0 min" }
-        return Duration.seconds(seconds).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated))
-    }
-}
-
 struct LegendRow: View {
     let series: ChartSeries
     let value: String

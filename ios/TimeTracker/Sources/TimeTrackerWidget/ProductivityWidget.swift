@@ -66,7 +66,7 @@ private struct ProductivityWidgetView: View {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(AnalyticsDurationFormatter.format(seconds, includesDays: false))
+            Text(DurationFormat.compact(seconds))
                 .font(.caption.weight(.semibold).monospacedDigit())
                 .minimumScaleFactor(0.75)
                 .lineLimit(1)

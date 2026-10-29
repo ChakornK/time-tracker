@@ -23,7 +23,7 @@ struct TimerView: View {
                 if let duration = model.lastSavedDurationSeconds {
                     VStack(alignment: .leading, spacing: 6) {
                         Label(
-                            "Saved \(Duration.seconds(duration), format: .time(pattern: .hourMinuteSecond)) on this device",
+                            "Saved \(DurationFormat.compact(duration)) on this device",
                             systemImage: "checkmark.circle.fill"
                         )
                         .font(.subheadline.weight(.medium))
