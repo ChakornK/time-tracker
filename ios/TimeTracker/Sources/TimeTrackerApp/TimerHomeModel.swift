@@ -154,7 +154,7 @@ final class TimerHomeModel {
         timerNotes = ""
         lastSavedDurationSeconds = nil
         errorMessage = nil
-        await liveActivity.start(for: timer)
+        await liveActivity.start(for: timer, colorHex: category.colorHex)
         activityState = liveActivity.state(for: timer.id)
     }
 

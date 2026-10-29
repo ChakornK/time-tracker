@@ -5,10 +5,14 @@ import Foundation
 final class LiveActivityController {
     private typealias TimerActivity = Activity<TimerActivityAttributes>
 
-    func start(for timer: RunningTimer) async {
+    func start(for timer: RunningTimer, colorHex: String? = nil) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         await endAll()
-        let state = TimerActivityAttributes.ContentState(startedAt: timer.startedAt, activityTitle: timer.title)
+        let state = TimerActivityAttributes.ContentState(
+            startedAt: timer.startedAt,
+            activityTitle: timer.title,
+            categoryColorHex: colorHex
+        )
         // A failed request only means no Lock Screen timer; the in-app timer is unaffected.
         _ = try? TimerActivity.request(
             attributes: TimerActivityAttributes(timerID: timer.id),

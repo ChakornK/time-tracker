@@ -29,6 +29,9 @@
 		A10000000000000000000027 /* Sources/TimeTrackerCore/AccountScopedTimerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000027 /* Sources/TimeTrackerCore/AccountScopedTimerStore.swift */; };
 		A10000000000000000000029 /* Sources/TimeTrackerCore/WidgetSummaryStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000029 /* Sources/TimeTrackerCore/WidgetSummaryStorage.swift */; };
 		A10000000000000000000040 /* Sources/TimeTrackerWidget/ProductivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000040 /* Sources/TimeTrackerWidget/ProductivityWidget.swift */; };
+		A10000000000000000000076 /* Sources/TimeTrackerWidget/TimerLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000076 /* Sources/TimeTrackerWidget/TimerLiveActivity.swift */; };
+		A10000000000000000000075 /* Sources/TimeTrackerApp/LiveActivityPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000013 /* Sources/TimeTrackerApp/LiveActivityPresentation.swift */; };
+		A10000000000000000000074 /* Sources/TimeTrackerCore/TimerActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000012 /* Sources/TimeTrackerCore/TimerActivityAttributes.swift */; };
 		A10000000000000000000073 /* Sources/TimeTrackerApp/CategoryColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000072 /* Sources/TimeTrackerApp/CategoryColors.swift */; };
 		A10000000000000000000041 /* Sources/TimeTrackerCore/ProductivitySummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000023 /* Sources/TimeTrackerCore/ProductivitySummary.swift */; };
 		A10000000000000000000042 /* Sources/TimeTrackerCore/WidgetSummaryStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000029 /* Sources/TimeTrackerCore/WidgetSummaryStorage.swift */; };
@@ -122,6 +125,7 @@
 		B20000000000000000000027 /* Sources/TimeTrackerCore/AccountScopedTimerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/AccountScopedTimerStore.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000029 /* Sources/TimeTrackerCore/WidgetSummaryStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/WidgetSummaryStorage.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000040 /* Sources/TimeTrackerWidget/ProductivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerWidget/ProductivityWidget.swift; sourceTree = SOURCE_ROOT; };
+		B20000000000000000000076 /* Sources/TimeTrackerWidget/TimerLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerWidget/TimerLiveActivity.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000041 /* TimeTrackerWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TimeTrackerWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000000000000000000042 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		B20000000000000000000045 /* Sources/TimeTrackerCore/WidgetTimelineEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/WidgetTimelineEntry.swift; sourceTree = SOURCE_ROOT; };
@@ -226,6 +230,7 @@
 				B20000000000000000000056 /* Sources/TimeTrackerApp/TimerHomeModel.swift */,
 				B20000000000000000000057 /* Sources/TimeTrackerApp/TimerView.swift */,
 				B20000000000000000000040 /* Sources/TimeTrackerWidget/ProductivityWidget.swift */,
+				B20000000000000000000076 /* Sources/TimeTrackerWidget/TimerLiveActivity.swift */,
 				B20000000000000000000042 /* WidgetKit.framework */,
 			);
 			path = .;
@@ -391,6 +396,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000040 /* Sources/TimeTrackerWidget/ProductivityWidget.swift in Sources */,
+				A10000000000000000000076 /* Sources/TimeTrackerWidget/TimerLiveActivity.swift in Sources */,
+				A10000000000000000000075 /* Sources/TimeTrackerApp/LiveActivityPresentation.swift in Sources */,
+				A10000000000000000000074 /* Sources/TimeTrackerCore/TimerActivityAttributes.swift in Sources */,
 				A10000000000000000000073 /* Sources/TimeTrackerApp/CategoryColors.swift in Sources */,
 				A10000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift in Sources */,
 				A10000000000000000000041 /* Sources/TimeTrackerCore/ProductivitySummary.swift in Sources */,

@@ -157,5 +157,6 @@ private struct ProductivityWidgetView: View {
 struct TimeTrackerWidgets: WidgetBundle {
     var body: some Widget {
         ProductivityWidget()
+        TimerLiveActivity()
     }
 }
