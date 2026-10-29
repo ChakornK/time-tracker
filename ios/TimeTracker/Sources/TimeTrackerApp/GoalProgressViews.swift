@@ -35,12 +35,7 @@ struct GoalProgressRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Circle()
-                    .fill(series.color)
-                    .frame(width: 10, height: 10)
-                    .accessibilityHidden(true)
-                Text(series.name)
-                    .lineLimit(1)
+                CategoryLabel(series: series)
                 Text(progress.goal.period.adjective)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -83,6 +78,6 @@ struct GoalsProgressCard: View {
                 )
             }
         }
-        .cardStyle(padding: 16, cornerRadius: 16)
+        .cardStyle()
     }
 }

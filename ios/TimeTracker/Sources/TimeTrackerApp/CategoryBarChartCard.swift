@@ -62,7 +62,7 @@ struct CategoryBarChartCard: View {
                 }
             }
         }
-        .cardStyle(padding: 16, cornerRadius: 16)
+        .cardStyle()
         .onChange(of: period) { selectedDate = nil }
     }
 

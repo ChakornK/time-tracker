@@ -121,12 +121,12 @@ struct SettingsView: View {
 
             if let successMessage = model.successMessage {
                 Section {
-                    Label(successMessage, systemImage: "checkmark.circle")
+                    StatusBanner(kind: .success, message: successMessage)
                 }
             }
             if let errorMessage = model.errorMessage {
-                Section("Could not complete action") {
-                    Text(errorMessage)
+                Section {
+                    StatusBanner(kind: .error, message: errorMessage)
                 }
             }
 

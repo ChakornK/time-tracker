@@ -32,7 +32,7 @@ struct ProductivitySummaryView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .cardStyle(padding: 16, cornerRadius: 16)
+        .cardStyle()
     }
 
     /// This week's categories, most time first.

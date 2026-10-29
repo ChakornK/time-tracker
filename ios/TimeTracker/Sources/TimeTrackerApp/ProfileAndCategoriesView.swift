@@ -230,7 +230,7 @@ struct ProfileAndCategoriesView: View {
                             Button("Edit", systemImage: "pencil") {
                                 goalSheet = .edit(goal)
                             }
-                            .tint(.orange)
+                            .tint(.gray)
                         }
                         .contextMenu {
                             Button("Edit", systemImage: "pencil") {
@@ -260,13 +260,7 @@ struct ProfileAndCategoriesView: View {
                     )
                 } else {
                     ForEach(model.categories.categories) { category in
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(ChartPalette.color(forHex: category.colorHex))
-                                .frame(width: 12, height: 12)
-                                .accessibilityHidden(true)
-                            Text(category.name)
-                        }
+                        CategoryLabel(category: category)
                         .swipeActions {
                             Button("Delete", systemImage: "trash", role: .destructive) {
                                 requestDeletion(of: category)
@@ -274,7 +268,7 @@ struct ProfileAndCategoriesView: View {
                             Button("Rename", systemImage: "pencil") {
                                 beginRenaming(category)
                             }
-                            .tint(.orange)
+                            .tint(.gray)
                         }
                         .contextMenu {
                             Button("Rename", systemImage: "pencil") {
@@ -301,18 +295,18 @@ struct ProfileAndCategoriesView: View {
 
             if let successMessage = model.successMessage {
                 Section {
-                    Label(successMessage, systemImage: "checkmark.circle")
+                    StatusBanner(kind: .success, message: successMessage)
                 }
             }
             if let errorMessage = model.errorMessage {
-                Section("Could not complete action") {
-                    Text(errorMessage)
-                    if let operation = model.failedOperation {
-                        Button(operation.retryTitle) {
-                            Task { await model.retryFailedOperation() }
-                        }
-                        .frame(minHeight: 44)
-                        .disabled(model.isBusy)
+                Section {
+                    StatusBanner(
+                        kind: .error,
+                        message: errorMessage,
+                        actionTitle: model.failedOperation?.retryTitle,
+                        isActionDisabled: model.isBusy
+                    ) {
+                        Task { await model.retryFailedOperation() }
                     }
                 }
             }

@@ -21,28 +21,14 @@ struct TimerView: View {
                 manualLogCard
 
                 if let duration = model.lastSavedDurationSeconds {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label(
-                            "Saved \(DurationFormat.compact(duration)) on this device",
-                            systemImage: "checkmark.circle.fill"
-                        )
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.green)
-                        .accessibilityLabel("Saved \(DurationFormat.spoken(duration)) on this device")
-                        if model.pendingLogCount > 0 {
-                            Text("It will appear in your recorded totals after syncing.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            syncButton
-                        }
-                    }
+                    StatusBanner(kind: .success, message: "Saved \(DurationFormat.compact(duration)).")
+                        .accessibilityLabel("Saved \(DurationFormat.spoken(duration)).")
+                        .cardStyle()
                 }
 
                 if let errorMessage = model.errorMessage {
-                    Text(errorMessage)
-                        .font(.callout)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    StatusBanner(kind: .error, message: errorMessage)
+                        .cardStyle()
                 }
 
                 if let state = model.activityState {
@@ -54,12 +40,18 @@ struct TimerView: View {
                     }
                 }
 
-                if model.pendingLogCount > 0 && model.lastSavedDurationSeconds == nil {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("\(model.pendingLogCount) saved logs waiting to sync")
-                            .font(.subheadline)
-                        syncButton
+                if model.pendingLogCount > 0 {
+                    StatusBanner(
+                        kind: .pending,
+                        message: model.pendingLogCount == 1
+                            ? "1 log is saved on this device and waiting to sync."
+                            : "\(model.pendingLogCount) logs are saved on this device and waiting to sync.",
+                        actionTitle: model.syncInProgress ? "Syncing" : "Sync now",
+                        isActionDisabled: model.syncInProgress
+                    ) {
+                        Task { await model.synchronize() }
                     }
+                    .cardStyle()
                 }
             }
             .padding(.horizontal, 20)
@@ -103,14 +95,6 @@ struct TimerView: View {
         .sheet(isPresented: $isShowingManualLog) {
             ManualLogSheet(model: model)
         }
-    }
-
-    private var syncButton: some View {
-        Button(model.syncInProgress ? "Syncing" : "Sync now") {
-            Task { await model.synchronize() }
-        }
-        .disabled(model.syncInProgress)
-        .frame(minHeight: 44)
     }
 
     private func runningTimerCard(_ timer: RunningTimer) -> some View {
