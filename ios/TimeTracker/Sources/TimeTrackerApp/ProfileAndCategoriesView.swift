@@ -151,6 +151,11 @@ final class ProfileAndCategoriesModel {
 }
 
 struct ProfileAndCategoriesView: View {
+    private enum Page: Hashable {
+        case goalsAndCategories
+        case myLogs
+    }
+
     private enum GoalSheet: Identifiable {
         case create
         case edit(APIGoal)
@@ -165,7 +170,9 @@ struct ProfileAndCategoriesView: View {
 
     let user: APIUser
     let logs: [ProductivitySummaryLog]
+    let localLogs: [LocalActivityLog]
     @State private var model: ProfileAndCategoriesModel
+    @State private var page = Page.goalsAndCategories
     @State private var goalSheet: GoalSheet?
     @State private var renamingCategory: APICategory?
     @State private var renameText = ""
@@ -174,6 +181,7 @@ struct ProfileAndCategoriesView: View {
     init(
         user: APIUser,
         logs: [ProductivitySummaryLog],
+        localLogs: [LocalActivityLog],
         categories: CategoryStore,
         goals: GoalStore,
         isCategoryAwaitingSync: @escaping (UUID) -> Bool,
@@ -181,6 +189,7 @@ struct ProfileAndCategoriesView: View {
     ) {
         self.user = user
         self.logs = logs
+        self.localLogs = localLogs
         _model = State(initialValue: ProfileAndCategoriesModel(
             categories: categories,
             goals: goals,
@@ -198,10 +207,130 @@ struct ProfileAndCategoriesView: View {
                         .font(.title3.weight(.semibold))
                     Text("@\(user.username)")
                         .foregroundStyle(.secondary)
+                    // Re-evaluates each minute so the week and goal counts roll over on their own.
+                    TimelineView(.everyMinute) { context in
+                        Text(summaryLine(now: context.date))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+                    }
                 }
                 .padding(.vertical, 4)
+
+                Picker("Show", selection: $page) {
+                    Text("Goals & categories").tag(Page.goalsAndCategories)
+                    Text("My logs").tag(Page.myLogs)
+                }
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
             }
 
+            switch page {
+            case .goalsAndCategories:
+                goalsAndCategories(colors: colors)
+            case .myLogs:
+                myLogs
+            }
+
+            if let successMessage = model.successMessage {
+                Section {
+                    StatusBanner(kind: .success, message: successMessage)
+                }
+            }
+            if let errorMessage = model.errorMessage {
+                Section {
+                    StatusBanner(
+                        kind: .error,
+                        message: errorMessage,
+                        actionTitle: model.failedOperation?.retryTitle,
+                        isActionDisabled: model.isBusy
+                    ) {
+                        Task { await model.retryFailedOperation() }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Profile")
+        .task { await model.load() }
+        .alert("Rename category", isPresented: isRenaming, presenting: renamingCategory) { category in
+            TextField("Category name", text: $renameText)
+                .textInputAutocapitalization(.words)
+            Button("Cancel", role: .cancel) {}
+            Button("Save") {
+                Task { await model.rename(category, to: renameText) }
+            }
+        }
+        .confirmationDialog(
+            deletingCategory.map { "Delete \($0.name)?" } ?? "",
+            isPresented: isConfirmingDeletion,
+            titleVisibility: .visible,
+            presenting: deletingCategory
+        ) { category in
+            Button("Delete category", role: .destructive) {
+                Task { await model.delete(category) }
+            }
+        } message: { _ in
+            Text("Its goals are deleted too. Logged time is kept but no longer belongs to a category.")
+        }
+        .sheet(item: $goalSheet) { sheet in
+            switch sheet {
+            case .create:
+                GoalEditorSheet(goals: model.goals, categories: model.categories.categories)
+            case .edit(let goal):
+                GoalEditorSheet(goals: model.goals, categories: model.categories.categories, editing: goal)
+            }
+        }
+    }
+
+    /// "12h this week · 2 of 3 goals met"
+    private func summaryLine(now: Date) -> String {
+        let week = DurationFormat.compact(ProductivitySummary(logs: logs, now: now).weekSeconds)
+        let goals = model.goals.goals
+        guard !goals.isEmpty else { return "\(week) this week" }
+        let met = goals.count { GoalProgress(goal: $0, logs: logs, now: now).isComplete }
+        return "\(week) this week · \(met) of \(goals.count) goals met"
+    }
+
+    /// Your logs on this device, newest day first, including ones still waiting to sync.
+    @ViewBuilder
+    private var myLogs: some View {
+        let calendar = Calendar.current
+        let days = Dictionary(grouping: localLogs) { calendar.startOfDay(for: $0.startedAt) }
+            .sorted { $0.key > $1.key }
+        if days.isEmpty {
+            Section {
+                ContentUnavailableView(
+                    "No logs yet",
+                    systemImage: "clock",
+                    description: Text("Time you track or log manually appears here.")
+                )
+            }
+        } else {
+            ForEach(days, id: \.key) { day, logs in
+                Section {
+                    ForEach(logs.sorted { $0.startedAt > $1.startedAt }) { log in
+                        LogRow(content: LogRowContent(
+                            log: log,
+                            categories: model.categories.categories,
+                            author: nil,
+                            time: .range
+                        ))
+                    }
+                } header: {
+                    HStack {
+                        Text(day.formatted(.dateTime.weekday(.wide).month().day()))
+                        Spacer()
+                        DurationText(logs.reduce(0) { $0 + $1.durationSeconds })
+                            .monospacedDigit()
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func goalsAndCategories(colors: CategoryColorResolver) -> some View {
             Section("Goals") {
                 if model.goals.isLoading && model.goals.goals.isEmpty {
                     ProgressView("Loading goals")
@@ -293,54 +422,6 @@ struct ProfileAndCategoriesView: View {
                 }
             }
 
-            if let successMessage = model.successMessage {
-                Section {
-                    StatusBanner(kind: .success, message: successMessage)
-                }
-            }
-            if let errorMessage = model.errorMessage {
-                Section {
-                    StatusBanner(
-                        kind: .error,
-                        message: errorMessage,
-                        actionTitle: model.failedOperation?.retryTitle,
-                        isActionDisabled: model.isBusy
-                    ) {
-                        Task { await model.retryFailedOperation() }
-                    }
-                }
-            }
-        }
-        .navigationTitle("Profile")
-        .task { await model.load() }
-        .alert("Rename category", isPresented: isRenaming, presenting: renamingCategory) { category in
-            TextField("Category name", text: $renameText)
-                .textInputAutocapitalization(.words)
-            Button("Cancel", role: .cancel) {}
-            Button("Save") {
-                Task { await model.rename(category, to: renameText) }
-            }
-        }
-        .confirmationDialog(
-            deletingCategory.map { "Delete \($0.name)?" } ?? "",
-            isPresented: isConfirmingDeletion,
-            titleVisibility: .visible,
-            presenting: deletingCategory
-        ) { category in
-            Button("Delete category", role: .destructive) {
-                Task { await model.delete(category) }
-            }
-        } message: { _ in
-            Text("Its goals are deleted too. Logged time is kept but no longer belongs to a category.")
-        }
-        .sheet(item: $goalSheet) { sheet in
-            switch sheet {
-            case .create:
-                GoalEditorSheet(goals: model.goals, categories: model.categories.categories)
-            case .edit(let goal):
-                GoalEditorSheet(goals: model.goals, categories: model.categories.categories, editing: goal)
-            }
-        }
     }
 
     private var isRenaming: Binding<Bool> {

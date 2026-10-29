@@ -61,6 +61,7 @@ struct MainTabView: View {
                 ProfileAndCategoriesView(
                     user: session.user ?? user,
                     logs: model.summaryLogs,
+                    localLogs: model.logs,
                     categories: model.categories,
                     goals: model.goals,
                     isCategoryAwaitingSync: { [model] in model.categoryIDsAwaitingSync.contains($0) },
