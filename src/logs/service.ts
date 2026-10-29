@@ -122,17 +122,17 @@ export class LogService {
         if (owned.length !== input.categoryIds.length) throw new CategoryOwnershipError();
       }
 
-      await transaction
-        .updateTable("logs")
-        .set({
-          ...(input.title !== undefined && { title: input.title }),
-          ...(input.notes !== undefined && { notes: input.notes }),
-          ...(input.startedAt !== undefined && { started_at: startedAt }),
-          ...(input.endedAt !== undefined && { ended_at: endedAt }),
-          ...(input.visibility !== undefined && { visibility: input.visibility }),
-        })
-        .where("id", "=", logId)
-        .execute();
+      const columns = {
+        ...(input.title !== undefined && { title: input.title }),
+        ...(input.notes !== undefined && { notes: input.notes }),
+        ...(input.startedAt !== undefined && { started_at: startedAt }),
+        ...(input.endedAt !== undefined && { ended_at: endedAt }),
+        ...(input.visibility !== undefined && { visibility: input.visibility }),
+      };
+      // A categories-only edit changes no log columns, and an empty SET is invalid SQL.
+      if (Object.keys(columns).length > 0) {
+        await transaction.updateTable("logs").set(columns).where("id", "=", logId).execute();
+      }
 
       if (input.categoryIds) {
         await transaction.deleteFrom("log_categories").where("log_id", "=", logId).execute();

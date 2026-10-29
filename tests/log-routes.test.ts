@@ -200,6 +200,12 @@ test("owners can edit and delete their logs, and nobody else can", async (t) => 
   assert.equal((await patch(owner.token, { categoryIds: [foreign] })).json().error.code, "INVALID_CATEGORIES");
   assert.equal((await patch(owner.token, { notes: null })).statusCode, 204);
 
+  // Changing only the category touches no log columns.
+  assert.equal((await patch(owner.token, { categoryIds: [writing] })).statusCode, 204);
+  const recategorized = await database.db.selectFrom("log_categories").select("category_id").where("log_id", "=", logID).execute();
+  assert.deepEqual(recategorized.map((link) => link.category_id), [writing]);
+  assert.equal((await patch(owner.token, { categoryIds: [] })).statusCode, 204);
+
   // Another account sees the log as missing for both edit and delete.
   const intruderEdit = await patch(other.token, { title: "Mine now" });
   assert.equal(intruderEdit.statusCode, 404);
