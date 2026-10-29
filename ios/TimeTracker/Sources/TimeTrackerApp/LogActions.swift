@@ -117,7 +117,7 @@ extension View {
             }
             Button("Wait", role: .cancel) {}
         } message: { _ in
-            Text("Try again once it has synced. If it's stuck, remove it from this device instead. If an earlier send reached the server, it stays in your feed and can be edited or deleted there.")
+            Text("Try again once it has synced. If it's stuck, you can remove it from this device. If it already reached the server, it stays in your feed and can be changed there. If it never did, its time is lost.")
         }
         .alert(
             "Couldn't change this log",
