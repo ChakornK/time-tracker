@@ -73,6 +73,7 @@ private final class EmptyTimerStore: TimerStoreProtocol {
     func discardTimer(timerID: UUID, userID: UUID) throws {}
     func updateLog(id: UUID, userID: UUID, edit: LogEdit) throws {}
     func deleteLog(id: UUID, userID: UUID) throws {}
+    func removeFromDevice(id: UUID, userID: UUID) throws {}
     func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer {
         guard var timer, timer.id == timerID, timer.userID == userID else { throw TimerStoreError.timerNotFound }
         timer.notes = notes

@@ -167,6 +167,9 @@ public protocol TimerStoreProtocol {
     func updateLog(id: UUID, userID: UUID, edit: LogEdit) throws
     /// Removes a finished log from this device, with the same rule as `updateLog`.
     func deleteLog(id: UUID, userID: UUID) throws
+    /// Removes a log whatever its sync state, so it's never sent again. For one stuck waiting to sync:
+    /// if an earlier send reached the server, that copy stays there and can be changed from the feed.
+    func removeFromDevice(id: UUID, userID: UUID) throws
     func currentTimer(userID: UUID) throws -> RunningTimer?
     func pendingLogs(userID: UUID) throws -> [LocalActivityLog]
     func allLogs(userID: UUID) throws -> [LocalActivityLog]
@@ -294,6 +297,16 @@ public final class SwiftDataTimerStore: TimerStoreProtocol {
 
     public func deleteLog(id: UUID, userID: UUID) throws {
         modelContext.delete(try changeableLog(id: id, userID: userID))
+        try modelContext.save()
+    }
+
+    public func removeFromDevice(id: UUID, userID: UUID) throws {
+        var descriptor = FetchDescriptor<StoredActivityLog>(
+            predicate: #Predicate { $0.id == id && $0.userID == userID }
+        )
+        descriptor.fetchLimit = 1
+        guard let stored = try modelContext.fetch(descriptor).first else { throw TimerStoreError.invalidStoredLog }
+        modelContext.delete(stored)
         try modelContext.save()
     }
 

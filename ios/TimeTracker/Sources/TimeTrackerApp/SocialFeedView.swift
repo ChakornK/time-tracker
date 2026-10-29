@@ -150,6 +150,9 @@ struct SocialFeedView: View {
             .logActionPresentations(state: $logActions, categories: categories, change: changeLog) { target, change in
                 guard let serverID = target.serverID else { return }
                 switch change {
+                case .removeFromDevice:
+                    // Only the device's copy went; a server copy, if any, now shows in its place.
+                    break
                 case .delete:
                     model.remove(id: serverID)
                 case .edit(let edit):
@@ -215,7 +218,8 @@ struct SocialFeedView: View {
                 // A log whose send reached the server but whose reply was lost shows once, as the
                 // device's row, until its retry confirms it.
                 let unsyncedKeys = Set(unsyncedLogs.map(\.idempotencyKey))
-                ForEach(model.entries.filter { $0.idempotencyKey.map { !unsyncedKeys.contains($0) } ?? true }) { entry in
+                let visibleEntries = model.entries.filter { $0.idempotencyKey.map { !unsyncedKeys.contains($0) } ?? true }
+                ForEach(visibleEntries) { entry in
                     LogRow(content: LogRowContent(entry: entry, viewerID: viewerID))
                         .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
                         .modifier(OwnLogSwipeActions(
@@ -223,7 +227,8 @@ struct SocialFeedView: View {
                             state: $logActions
                         ))
                         .task {
-                            if entry.id == model.entries.last?.id {
+                            // The last visible row, since the last loaded entry may be hidden above.
+                            if entry.id == visibleEntries.last?.id {
                                 await model.loadMore()
                             }
                         }

@@ -219,6 +219,14 @@ final class TimerHomeModel {
             throw LogChangeError.notFound
         }
 
+        if change == .removeFromDevice {
+            guard let local else { throw LogChangeError.notFound }
+            try store.removeFromDevice(id: local.id, userID: userID)
+            reloadLocalData()
+            publishWidgetSummary()
+            return
+        }
+
         switch route {
         case .waitForSync:
             throw TimerStoreError.logAwaitingSync
@@ -226,7 +234,7 @@ final class TimerHomeModel {
             do {
                 switch change {
                 case .edit(let edit): try await api.updateLog(id: id, edit: edit, accessToken: token)
-                case .delete: try await api.deleteLog(id: id, accessToken: token)
+                case .delete, .removeFromDevice: try await api.deleteLog(id: id, accessToken: token)
                 }
             } catch APIClientError.server(404, _) where change == .delete {
                 // Already gone, for example deleted from another device.
@@ -249,7 +257,7 @@ final class TimerHomeModel {
         if let local {
             switch change {
             case .edit(let edit): try store.updateLog(id: local.id, userID: userID, edit: edit)
-            case .delete: try store.deleteLog(id: local.id, userID: userID)
+            case .delete, .removeFromDevice: try store.deleteLog(id: local.id, userID: userID)
             }
         }
         reloadLocalData()
@@ -451,6 +459,8 @@ enum ManualLogError: LocalizedError {
 enum LogChange: Equatable {
     case edit(LogEdit)
     case delete
+    /// Drops a log stuck waiting to sync from this device only, so it's never sent again.
+    case removeFromDevice
 }
 
 enum LogChangeError: LocalizedError {

@@ -58,6 +58,11 @@ public final class AccountScopedTimerStore: TimerStoreProtocol {
         try store.deleteLog(id: id, userID: userID)
     }
 
+    public func removeFromDevice(id: UUID, userID requestedUserID: UUID) throws {
+        try verify(requestedUserID)
+        try store.removeFromDevice(id: id, userID: userID)
+    }
+
     public func currentTimer(userID requestedUserID: UUID) throws -> RunningTimer? {
         try verify(requestedUserID)
         return try store.currentTimer(userID: userID)

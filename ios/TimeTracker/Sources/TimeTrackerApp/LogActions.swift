@@ -40,6 +40,8 @@ typealias LogChanger = @MainActor (LogChange, _ localID: UUID?, _ serverID: UUID
 struct LogActionState {
     var editing: LogTarget?
     var deleting: LogTarget?
+    /// A log stuck waiting to sync, offered removal from this device instead.
+    var stuck: LogTarget?
     var message: String?
 }
 
@@ -49,14 +51,14 @@ extension View {
         swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button("Delete", systemImage: "trash", role: .destructive) {
                 if target.waitsForSync {
-                    state.wrappedValue.message = TimerStoreError.logAwaitingSync.localizedDescription
+                    state.wrappedValue.stuck = target
                 } else {
                     state.wrappedValue.deleting = target
                 }
             }
             Button("Edit", systemImage: "pencil") {
                 if target.waitsForSync {
-                    state.wrappedValue.message = TimerStoreError.logAwaitingSync.localizedDescription
+                    state.wrappedValue.stuck = target
                 } else {
                     state.wrappedValue.editing = target
                 }
@@ -97,6 +99,25 @@ extension View {
             }
         } message: { _ in
             Text("Its time is removed from your feed, Insights and goals.")
+        }
+        .alert(
+            "This log is still being sent",
+            isPresented: Binding(get: { state.wrappedValue.stuck != nil }, set: { if !$0 { state.wrappedValue.stuck = nil } }),
+            presenting: state.wrappedValue.stuck
+        ) { target in
+            Button("Remove from this device", role: .destructive) {
+                Task {
+                    do {
+                        try await change(.removeFromDevice, target.localID, target.serverID)
+                        onChanged(target, .removeFromDevice)
+                    } catch {
+                        state.wrappedValue.message = error.localizedDescription
+                    }
+                }
+            }
+            Button("Wait", role: .cancel) {}
+        } message: { _ in
+            Text("Try again once it has synced. If it's stuck, remove it from this device instead. If an earlier send reached the server, it stays in your feed and can be edited or deleted there.")
         }
         .alert(
             "Couldn't change this log",

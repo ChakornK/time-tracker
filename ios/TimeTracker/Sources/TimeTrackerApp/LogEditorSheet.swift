@@ -106,7 +106,10 @@ struct LogEditorSheet: View {
             notes: LogNotes.cleaned(notes),
             startedAt: startedAt,
             endedAt: endedAt,
-            categoryIDs: keepsCategories ? original.categoryIDs : (category.map { [$0.id] } ?? []),
+            // Deleted categories are dropped, or the server would reject the log for them again.
+            categoryIDs: keepsCategories
+                ? original.categoryIDs.filter { id in categories.contains { $0.id == id } }
+                : (category.map { [$0.id] } ?? []),
             visibility: visibility
         )
         isSaving = true

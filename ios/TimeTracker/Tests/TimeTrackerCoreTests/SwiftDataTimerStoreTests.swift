@@ -77,6 +77,14 @@ struct SwiftDataTimerStoreTests {
         try store.markSyncing(idempotencyKey: log.idempotencyKey, userID: userID)
         #expect(try store.allLogs(userID: userID).first?.changeRoute == .waitForSync)
         #expect(throws: TimerStoreError.logAwaitingSync) { try store.deleteLog(id: log.id, userID: userID) }
+        // Removing it from the device is the deliberate way out, and it's never sent again.
+        let stuck = try store.addCompletedLog(
+            userID: userID, title: "Stuck", notes: nil, categoryIDs: [], visibility: .public,
+            startedAt: startedAt, endedAt: startedAt.addingTimeInterval(60)
+        )
+        try store.markSyncing(idempotencyKey: stuck.idempotencyKey, userID: userID)
+        try store.removeFromDevice(id: stuck.id, userID: userID)
+        #expect(try store.pendingLogs(userID: userID).map(\.id) == [log.id])
 
         // Synced logs are changed on the server first and then mirrored here.
         let serverID = UUID()

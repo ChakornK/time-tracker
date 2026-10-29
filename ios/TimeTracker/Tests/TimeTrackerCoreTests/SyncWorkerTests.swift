@@ -154,6 +154,7 @@ private final class RecordingTimerStore: TimerStoreProtocol {
     func discardTimer(timerID: UUID, userID: UUID) throws {}
     func updateLog(id: UUID, userID: UUID, edit: LogEdit) throws {}
     func deleteLog(id: UUID, userID: UUID) throws {}
+    func removeFromDevice(id: UUID, userID: UUID) throws {}
     func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer {
         throw TimerStoreError.noRunningTimer
     }
