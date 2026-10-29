@@ -12,9 +12,19 @@ extension View {
     /// The main call to action. The fill is the neutral tint, which is white in dark mode, so the
     /// label takes the background color to stay readable in both modes.
     func primaryActionStyle() -> some View {
-        self
+        modifier(PrimaryActionStyle())
+    }
+}
+
+private struct PrimaryActionStyle: ViewModifier {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func body(content: Content) -> some View {
+        content
             .buttonStyle(.borderedProminent)
-            .foregroundStyle(Color(uiColor: .systemBackground))
+            // A disabled button gets the system's light gray fill, which a background-colored label
+            // would vanish into.
+            .foregroundStyle(isEnabled ? Color(uiColor: .systemBackground) : Color.secondary)
     }
 }
 
