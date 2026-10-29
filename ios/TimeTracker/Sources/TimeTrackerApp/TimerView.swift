@@ -3,17 +3,16 @@ import SwiftUI
 struct TimerView: View {
     @Bindable var model: TimerHomeModel
     @State private var isShowingManualLog = false
+    @State private var isAddingCategory = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
                 if let timer = model.runningTimer {
                     runningTimerCard(timer)
                 } else {
                     startTimerCard
                 }
-
-                manualLogCard
 
                 if let duration = model.lastSavedDurationSeconds {
                     StatusBanner(
@@ -29,15 +28,6 @@ struct TimerView: View {
                         .cardStyle()
                 }
 
-                if let state = model.activityState {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Live Activity preview")
-                            .font(.headline)
-                        LiveTimerLockScreenView(state: state)
-                            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-                    }
-                }
-
                 if model.pendingLogCount > 0 {
                     StatusBanner(
                         kind: .pending,
@@ -51,6 +41,17 @@ struct TimerView: View {
                     }
                     .cardStyle()
                 }
+
+                #if DEBUG
+                if let state = model.activityState {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Live Activity preview")
+                            .font(.headline)
+                        LiveTimerLockScreenView(state: state)
+                            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                    }
+                }
+                #endif
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
@@ -60,6 +61,27 @@ struct TimerView: View {
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Timer")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Log time manually", systemImage: "plus") {
+                    isShowingManualLog = true
+                }
+                .disabled(model.categories.categories.isEmpty)
+            }
+        }
+        .sheet(isPresented: $isShowingManualLog) {
+            ManualLogSheet(model: model)
+        }
+        .alert("New category", isPresented: $isAddingCategory) {
+            TextField("Category name", text: $model.newCategoryName)
+                .textInputAutocapitalization(.words)
+            Button("Cancel", role: .cancel) {
+                model.newCategoryName = ""
+            }
+            Button("Add") {
+                Task { await model.addCategory() }
+            }
+        }
         .alert(
             "Timer could not be saved",
             isPresented: Binding(
@@ -74,53 +96,28 @@ struct TimerView: View {
         }
     }
 
-    private var manualLogCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Forgot to start a timer?")
-                .font(.headline)
-            Text("Add time you've already spent on a category.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Button {
-                isShowingManualLog = true
-            } label: {
-                Label("Log time manually", systemImage: "square.and.pencil")
-                    .frame(maxWidth: .infinity, minHeight: 44)
-            }
-            .buttonStyle(.bordered)
-            .disabled(model.categories.categories.isEmpty)
-        }
-        .cardStyle()
-        .sheet(isPresented: $isShowingManualLog) {
-            ManualLogSheet(model: model)
-        }
-    }
-
     private func runningTimerCard(_ timer: RunningTimer) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Timer running")
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
-            Text(model.categories.category(withID: timer.categoryIDs.first)?.name ?? timer.title)
-                .font(.title2.weight(.semibold))
-                .fixedSize(horizontal: false, vertical: true)
+            Group {
+                if let category = model.categories.category(withID: timer.categoryIDs.first) {
+                    CategoryLabel(category: category)
+                } else {
+                    Text(timer.title)
+                }
+            }
+            .font(.title2.weight(.semibold))
             TimelineView(.periodic(from: timer.startedAt, by: 1)) { context in
                 Text(Duration.seconds(timer.elapsedSeconds(at: context.date)), format: .time(pattern: .hourMinuteSecond))
                     .font(.system(size: 44, weight: .regular, design: .rounded).monospacedDigit())
                     .contentTransition(.numericText())
                     .accessibilityLabel("Elapsed time")
             }
-            HStack(spacing: 8) {
-                Text(timer.visibility.label)
-                let categoryNames = timer.categoryIDs.compactMap { model.categories.category(withID: $0)?.name }
-                if !categoryNames.isEmpty {
-                    Text("·")
-                    Text(categoryNames.joined(separator: ", "))
-                        .lineLimit(1)
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Label(timer.visibility.label, systemImage: timer.visibility.symbol)
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Button {
                 Task { await model.stop() }
@@ -142,32 +139,26 @@ struct TimerView: View {
                 Text("Add a category to get started, such as a course, reading, exercise, or project.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            } else {
-                Picker("Category", selection: $model.selectedCategoryID) {
-                    Text("Choose a category").tag(UUID?.none)
-                    ForEach(model.categories.categories) { category in
-                        Text(category.name).tag(Optional(category.id))
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                .accessibilityLabel("Activity category")
             }
 
-            HStack(spacing: 10) {
-                TextField("Add a category", text: $model.newCategoryName)
-                    .textInputAutocapitalization(.words)
-                    .submitLabel(.done)
-                    .onSubmit { Task { await model.addCategory() } }
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: 44)
-                    .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10))
-
-                Button(model.categories.isCreating ? "Adding" : "Add") {
-                    Task { await model.addCategory() }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(model.categories.categories) { category in
+                        categoryChip(category)
+                    }
+                    Button {
+                        isAddingCategory = true
+                    } label: {
+                        Label("New category", systemImage: "plus")
+                            .font(.subheadline)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 44)
+                            .overlay(Capsule().strokeBorder(Color(uiColor: .separator), style: StrokeStyle(lineWidth: 1, dash: [4])))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.categories.isCreating)
                 }
-                .frame(minWidth: 56, minHeight: 44)
-                .disabled(!model.canAddCategory)
+                .padding(.vertical, 2)
             }
 
             Picker("Visibility", selection: $model.visibility) {
@@ -187,6 +178,23 @@ struct TimerView: View {
             .disabled(!model.canStart)
         }
         .cardStyle()
+    }
+
+    private func categoryChip(_ category: APICategory) -> some View {
+        let isSelected = model.selectedCategoryID == category.id
+        return Button {
+            model.selectedCategoryID = category.id
+        } label: {
+            CategoryLabel(category: category)
+                .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(isSelected ? Color(uiColor: .tertiarySystemFill) : .clear, in: Capsule())
+                .overlay(Capsule().strokeBorder(isSelected ? Color.primary : Color(uiColor: .separator), lineWidth: isSelected ? 2 : 1))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

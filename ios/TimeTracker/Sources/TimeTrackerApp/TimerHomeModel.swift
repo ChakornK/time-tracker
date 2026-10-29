@@ -84,10 +84,6 @@ final class TimerHomeModel {
         categories.category(withID: selectedCategoryID) != nil && !categories.isCreating
     }
 
-    var canAddCategory: Bool {
-        !categories.isCreating && !trimmedNewCategoryName.isEmpty
-    }
-
     private var trimmedNewCategoryName: String {
         newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
