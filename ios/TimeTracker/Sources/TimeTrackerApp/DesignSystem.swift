@@ -162,7 +162,11 @@ struct FlowLayout: Layout {
         var current = Row()
         for index in subviews.indices {
             var size = subviews[index].sizeThatFits(.unspecified)
-            size.width = min(size.width, maxWidth)
+            if size.width > maxWidth {
+                // Narrowed to the row, a view may wrap and grow taller, so measure it at that width.
+                size = subviews[index].sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+                size.width = min(size.width, maxWidth)
+            }
             let widthWithView = current.indices.isEmpty ? size.width : current.width + spacing + size.width
             if !current.indices.isEmpty && widthWithView > maxWidth {
                 rows.append(current)
@@ -179,4 +183,3 @@ struct FlowLayout: Layout {
         return rows
     }
 }
-

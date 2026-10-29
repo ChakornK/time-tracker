@@ -171,6 +171,7 @@ struct TimerView: View {
                 } label: {
                     Label("New category", systemImage: "plus")
                         .font(.subheadline)
+                        .lineLimit(1)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
                         .overlay(Capsule().strokeBorder(Color(uiColor: .separator), style: StrokeStyle(lineWidth: 1, dash: [4])))
@@ -210,8 +211,9 @@ struct TimerView: View {
         return Button {
             model.selectedCategoryID = category.id
         } label: {
+            // One weight for both states, so selecting a chip never widens it onto the next row.
             CategoryLabel(category: category)
-                .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                .font(.subheadline)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 44)
                 .background(isSelected ? Color(uiColor: .tertiarySystemFill) : .clear, in: Capsule())
