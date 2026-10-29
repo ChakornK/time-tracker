@@ -67,6 +67,7 @@ private struct ProductivityWidgetView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(DurationFormat.compact(seconds))
+                .accessibilityLabel(DurationFormat.spoken(seconds))
                 .font(.caption.weight(.semibold).monospacedDigit())
                 .minimumScaleFactor(0.75)
                 .lineLimit(1)

@@ -57,9 +57,27 @@ struct CategoryColorResolver {
     }
 }
 
+/// A duration in the shared compact format that VoiceOver reads in words.
+struct DurationText: View {
+    let seconds: Double
+
+    init(_ seconds: Double) {
+        self.seconds = seconds
+    }
+
+    init(_ seconds: Int) {
+        self.seconds = Double(seconds)
+    }
+
+    var body: some View {
+        Text(DurationFormat.compact(seconds))
+            .accessibilityLabel(DurationFormat.spoken(seconds))
+    }
+}
+
 struct LegendRow: View {
     let series: ChartSeries
-    let value: String
+    let seconds: Double
     var detail: String?
 
     var body: some View {
@@ -71,7 +89,7 @@ struct LegendRow: View {
             Text(series.name)
                 .lineLimit(1)
             Spacer(minLength: 8)
-            Text(value)
+            DurationText(seconds)
                 .monospacedDigit()
             if let detail {
                 Text(detail)

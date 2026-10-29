@@ -15,6 +15,12 @@ struct ProductivitySummaryTests {
         #expect(DurationFormat.compact(seconds) == expected)
     }
 
+    @Test func spokenDurationsNeverReadAsEmpty() {
+        #expect(DurationFormat.spoken(0) == "0 minutes")
+        #expect(DurationFormat.spoken(30) == "less than a minute")
+        #expect(DurationFormat.spoken(9_030).contains("30"))
+    }
+
     @Test func sharedSummaryModelCalculatesCalendarTotals() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

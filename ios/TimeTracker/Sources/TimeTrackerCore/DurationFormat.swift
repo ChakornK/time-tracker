@@ -18,4 +18,16 @@ public enum DurationFormat {
     public static func compact(_ seconds: Double) -> String {
         compact(Int(seconds))
     }
+
+    /// The same span in words, such as "2 hours, 30 minutes", for VoiceOver, which reads "2h 30m"
+    /// letter by letter.
+    public static func spoken(_ seconds: Int) -> String {
+        let remaining = max(0, seconds)
+        guard remaining >= 60 else { return remaining > 0 ? "less than a minute" : "0 minutes" }
+        return Duration.seconds(remaining - remaining % 60).formatted(.units(allowed: [.hours, .minutes], width: .wide))
+    }
+
+    public static func spoken(_ seconds: Double) -> String {
+        spoken(Int(seconds))
+    }
 }

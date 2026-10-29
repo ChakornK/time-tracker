@@ -54,6 +54,7 @@ struct GoalProgressRow: View {
                     .font(.subheadline)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel("\(DurationFormat.spoken(progress.trackedSeconds)) of \(DurationFormat.spoken(progress.goal.targetSeconds))")
             }
             ProgressView(value: progress.fraction)
                 .tint(series.color)

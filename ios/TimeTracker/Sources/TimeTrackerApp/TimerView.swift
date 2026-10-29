@@ -28,6 +28,7 @@ struct TimerView: View {
                         )
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.green)
+                        .accessibilityLabel("Saved \(DurationFormat.spoken(duration)) on this device")
                         if model.pendingLogCount > 0 {
                             Text("It will appear in your recorded totals after syncing.")
                                 .font(.subheadline)

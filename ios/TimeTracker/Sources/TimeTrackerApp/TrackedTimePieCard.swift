@@ -69,7 +69,7 @@ struct TrackedTimePieCard: View {
                 ForEach(slices) { slice in
                     LegendRow(
                         series: slice.series,
-                        value: DurationFormat.compact(slice.seconds),
+                        seconds: slice.seconds,
                         detail: percent(slice.seconds, of: analytics.interval.duration)
                     )
                 }

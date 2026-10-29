@@ -170,7 +170,7 @@ private struct FeedEntryRow: View {
             }
             HStack(spacing: 12) {
                 Label {
-                    Text(Duration.seconds(entry.durationSeconds), format: .time(pattern: .hourMinute))
+                    DurationText(entry.durationSeconds)
                 } icon: {
                     Image(systemName: "clock")
                         .accessibilityHidden(true)

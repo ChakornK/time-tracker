@@ -20,7 +20,7 @@ struct ProductivitySummaryView: View {
                             Text(category.name)
                                 .lineLimit(1)
                             Spacer(minLength: 8)
-                            Text(DurationFormat.compact(category.seconds))
+                            DurationText(category.seconds)
                                 .monospacedDigit()
                         }
                         .font(.subheadline)
@@ -49,7 +49,7 @@ struct ProductivitySummaryView: View {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(DurationFormat.compact(seconds))
+            DurationText(seconds)
                 .font(.body.weight(.semibold).monospacedDigit())
         }
     }

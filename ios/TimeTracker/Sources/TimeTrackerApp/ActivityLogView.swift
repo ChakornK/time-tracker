@@ -25,7 +25,7 @@ struct ActivityLogView: View {
                                 .font(.headline)
                                 .lineLimit(2)
                             Spacer(minLength: 8)
-                            Text(DurationFormat.compact(log.durationSeconds))
+                            DurationText(log.durationSeconds)
                                 .font(.subheadline.monospacedDigit())
                         }
 

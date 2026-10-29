@@ -52,7 +52,7 @@ struct CategoryBarChartCard: View {
                         ForEach(shownIDs, id: \.self) { categoryID in
                             LegendRow(
                                 series: colors.series(for: categoryID),
-                                value: DurationFormat.compact(analytics.totalsByCategory[categoryID] ?? 0)
+                                seconds: analytics.totalsByCategory[categoryID] ?? 0
                             )
                         }
                         Text("Tap a day to see its breakdown.")
@@ -127,7 +127,7 @@ struct CategoryBarChartCard: View {
             }
             ForEach(shownIDs, id: \.self) { categoryID in
                 let seconds = analytics.daily.first { $0.day == day && $0.categoryID == categoryID }?.seconds ?? 0
-                LegendRow(series: colors.series(for: categoryID), value: DurationFormat.compact(seconds))
+                LegendRow(series: colors.series(for: categoryID), seconds: seconds)
             }
         }
     }
