@@ -187,8 +187,12 @@ final class TimerHomeModel {
             lastSavedDurationSeconds = log.durationSeconds
             errorMessage = nil
         } catch TimerStoreError.timerNotFound {
-            // Already stopped and saved from the Live Activity, which refreshes the app on its own.
+            // Usually already stopped and saved from the Live Activity. Clean up here too, in case the
+            // timer went away some other way and no notification follows.
             reloadLocalData()
+            await liveActivity.end(timerID: timer.id)
+            activityState = nil
+            publishWidgetSummary()
             return
         } catch {
             stopFailureMessage = error.localizedDescription
