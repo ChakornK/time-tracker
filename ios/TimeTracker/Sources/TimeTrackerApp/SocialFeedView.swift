@@ -212,7 +212,10 @@ struct SocialFeedView: View {
                         .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
                         .logSwipeActions(LogTarget(log: log), state: $logActions)
                 }
-                ForEach(model.entries) { entry in
+                // A log whose send reached the server but whose reply was lost shows once, as the
+                // device's row, until its retry confirms it.
+                let unsyncedKeys = Set(unsyncedLogs.map(\.idempotencyKey))
+                ForEach(model.entries.filter { $0.idempotencyKey.map { !unsyncedKeys.contains($0) } ?? true }) { entry in
                     LogRow(content: LogRowContent(entry: entry, viewerID: viewerID))
                         .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
                         .modifier(OwnLogSwipeActions(
@@ -262,4 +265,3 @@ private struct OwnLogSwipeActions: ViewModifier {
         }
     }
 }
-

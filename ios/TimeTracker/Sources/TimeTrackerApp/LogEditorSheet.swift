@@ -12,12 +12,12 @@ struct LogEditorSheet: View {
     @State private var notes: String
     @State private var isSaving = false
     @State private var errorMessage: String?
-    private let originalTitle: String
+    private let original: LogEdit
 
     init(log: LogEdit, categories: [APICategory], onSave: @escaping (LogEdit) async throws -> Void) {
         self.categories = categories
         self.onSave = onSave
-        originalTitle = log.title
+        original = log
         // A deleted category drops out, leaving the log uncategorized until one is chosen.
         _categoryID = State(initialValue: log.categoryIDs.first { id in categories.contains { $0.id == id } })
         _startedAt = State(initialValue: log.startedAt)
@@ -98,12 +98,15 @@ struct LogEditorSheet: View {
 
     private func save() async {
         let category = categories.first { $0.id == categoryID }
+        // An unchanged category keeps every category the log had, such as one from another client
+        // with several; choosing a different one replaces them.
+        let keepsCategories = categoryID == original.categoryIDs.first { id in categories.contains { $0.id == id } }
         let edit = LogEdit(
-            title: category?.name ?? originalTitle,
+            title: keepsCategories ? original.title : (category?.name ?? "Uncategorized"),
             notes: LogNotes.cleaned(notes),
             startedAt: startedAt,
             endedAt: endedAt,
-            categoryIDs: category.map { [$0.id] } ?? [],
+            categoryIDs: keepsCategories ? original.categoryIDs : (category.map { [$0.id] } ?? []),
             visibility: visibility
         )
         isSaving = true

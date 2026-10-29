@@ -237,6 +237,8 @@ final class TimerHomeModel {
                 throw error
             } catch let error as APIClientError where LogSyncCoordinator.isDefiniteRejection(error) {
                 throw LogChangeError.rejected
+            } catch APIClientError.server(let statusCode, _) where statusCode >= 500 {
+                throw LogChangeError.serverError
             } catch {
                 throw LogChangeError.offline
             }
@@ -252,6 +254,10 @@ final class TimerHomeModel {
         }
         reloadLocalData()
         publishWidgetSummary()
+        // A log fixed on the device, such as one the server had rejected, can be sent right away.
+        if route == .localOnly, change != .delete {
+            await synchronize()
+        }
     }
 
     /// Throws away the running timer without saving a log, for one started by mistake.
@@ -260,7 +266,10 @@ final class TimerHomeModel {
         do {
             try store.discardTimer(timerID: timer.id, userID: userID)
         } catch TimerStoreError.timerNotFound {
-            // Already stopped from the Live Activity.
+            // Stopped from the Live Activity a moment ago, which saved its time.
+            reloadLocalData()
+            errorMessage = "The timer had already stopped and its time was saved. Delete it from My logs if you don't want it."
+            return
         } catch {
             errorMessage = "The timer could not be discarded. Try again."
             return
@@ -447,14 +456,15 @@ enum LogChange: Equatable {
 enum LogChangeError: LocalizedError {
     case notFound
     case rejected
+    case serverError
     case offline
 
     var errorDescription: String? {
         switch self {
         case .notFound: "This log no longer exists. Pull to refresh."
         case .rejected: "The server didn't accept that change. Check the times and category and try again."
+        case .serverError: "The server had a problem saving that change. Try again in a moment."
         case .offline: "The change couldn't reach the server. Check your connection and try again."
         }
     }
 }
-

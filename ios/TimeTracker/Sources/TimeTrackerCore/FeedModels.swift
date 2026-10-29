@@ -28,6 +28,8 @@ public struct FeedEntry: Codable, Equatable, Sendable, Identifiable {
     public let durationSeconds: Int
     public let visibility: ActivityVisibility
     public let createdAt: Date
+    /// Present only on the viewer's own entries, matching the key their device synced the log with.
+    public let idempotencyKey: UUID?
     public let author: Author
     public let categories: [Category]
 
@@ -42,6 +44,7 @@ public struct FeedEntry: Codable, Equatable, Sendable, Identifiable {
             durationSeconds: max(0, Int(edit.endedAt.timeIntervalSince(edit.startedAt))),
             visibility: edit.visibility,
             createdAt: createdAt,
+            idempotencyKey: idempotencyKey,
             author: author,
             categories: categories
         )

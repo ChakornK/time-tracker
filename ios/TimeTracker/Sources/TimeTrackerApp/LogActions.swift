@@ -21,9 +21,11 @@ struct LogTarget: Identifiable, Equatable {
         self.init(id: log.id, localID: log.id, serverID: log.serverID, edit: log.logEdit, waitsForSync: log.changeRoute == .waitForSync)
     }
 
-    /// Prefers the copy on this device when there is one, so its sync state decides the route.
+    /// Prefers the copy on this device when there is one, so its sync state decides the route. The
+    /// idempotency key also finds a copy whose send reached the server but whose reply was lost, which
+    /// has no `serverID` yet and must wait for its retry.
     init(entry: FeedEntry, localLogs: [LocalActivityLog]) {
-        if let local = localLogs.first(where: { $0.serverID == entry.id }) {
+        if let local = localLogs.first(where: { $0.serverID == entry.id || $0.idempotencyKey == entry.idempotencyKey }) {
             self.init(log: local)
         } else {
             self.init(id: entry.id, localID: nil, serverID: entry.id, edit: entry.logEdit, waitsForSync: false)
