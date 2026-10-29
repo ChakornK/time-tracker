@@ -36,6 +36,19 @@ struct SwiftDataTimerStoreTests {
         #expect(log.notes == "Outline and first draft")
     }
 
+    @Test func notesAreTrimmedAndCappedByTheServersUTF16Length() {
+        #expect(LogNotes.cleaned(nil) == nil)
+        #expect(LogNotes.cleaned("  \n ") == nil)
+        #expect(LogNotes.cleaned("  Outline  ") == "Outline")
+
+        // Each flag is one character but four UTF-16 code units, so a character cap would let this through.
+        let flags = String(repeating: "🇰🇷", count: 3_000)
+        let capped = LogNotes.cleaned(flags)
+        #expect(capped?.utf16.count == 10_000)
+        #expect(capped?.count == 2_500)
+        #expect(LogNotes.cleaned(String(repeating: "a", count: 10_000))?.count == 10_000)
+    }
+
     @Test func manualLogIsSavedPendingSyncAndRejectsEmptyRanges() throws {
         let userID = UUID()
         let categoryID = UUID()

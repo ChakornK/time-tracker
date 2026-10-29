@@ -114,7 +114,7 @@ final class TimerHomeModel {
             timer = try store.start(
                 userID: userID,
                 title: category.name,
-                notes: Self.cleanedNotes(timerNotes),
+                notes: LogNotes.cleaned(timerNotes),
                 categoryIDs: [category.id],
                 visibility: visibility,
                 startedAt: date
@@ -151,20 +151,20 @@ final class TimerHomeModel {
 
     /// Replaces the running timer's notes, which are saved with its log when it stops.
     func updateNotes(_ notes: String) {
-        guard let timer = runningTimer else { return }
-        do {
-            runningTimer = try store.updateTimerNotes(timerID: timer.id, userID: userID, notes: Self.cleanedNotes(notes))
-            errorMessage = nil
-        } catch {
-            errorMessage = "Notes could not be saved: \(error.localizedDescription)"
+        guard let timer = runningTimer else {
+            errorMessage = "The timer already stopped, so its notes couldn't be changed."
+            return
         }
-    }
-
-    /// Trimmed notes, or `nil` when there are none, so an empty field never saves blank notes. Capped
-    /// at the server's 10,000-character limit, since a longer note would make the log fail to sync forever.
-    static func cleanedNotes(_ notes: String?) -> String? {
-        let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty ? nil : String(trimmed.prefix(10_000))
+        do {
+            runningTimer = try store.updateTimerNotes(timerID: timer.id, userID: userID, notes: LogNotes.cleaned(notes))
+            errorMessage = nil
+        } catch TimerStoreError.timerNotFound {
+            // Stopped from the Live Activity or widget while the notes were open.
+            reloadLocalData()
+            errorMessage = "The timer already stopped, so its notes couldn't be changed."
+        } catch {
+            errorMessage = "Notes could not be saved. Try again."
+        }
     }
 
     /// Saves time the user enters by hand, then syncs it in the background.
@@ -185,7 +185,7 @@ final class TimerHomeModel {
         let log = try store.addCompletedLog(
             userID: userID,
             title: category.name,
-            notes: Self.cleanedNotes(notes),
+            notes: LogNotes.cleaned(notes),
             categoryIDs: [category.id],
             visibility: visibility,
             startedAt: startedAt,

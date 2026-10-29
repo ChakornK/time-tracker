@@ -244,11 +244,12 @@ public final class SwiftDataTimerStore: TimerStoreProtocol {
         guard let storedTimer = try modelContext.fetch(descriptor).first else {
             throw TimerStoreError.timerNotFound
         }
-        storedTimer.notes = notes
-        guard let timer = storedTimer.runningTimer else {
+        guard var timer = storedTimer.runningTimer else {
             throw TimerStoreError.invalidStoredTimer
         }
+        storedTimer.notes = notes
         try modelContext.save()
+        timer.notes = notes
         return timer
     }
 

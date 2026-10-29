@@ -94,3 +94,23 @@ public struct LocalActivityLog: Equatable, Sendable, Identifiable {
         max(0, Int(endedAt.timeIntervalSince(startedAt)))
     }
 }
+
+public enum LogNotes {
+    /// The server's limit, which counts UTF-16 code units the way JavaScript string length does.
+    public static let maximumUTF16Length = 10_000
+
+    /// Trimmed notes, or `nil` when there are none, so an empty field never saves blank notes. Long
+    /// notes are cut to the server's limit on a character boundary, since a longer note would make the
+    /// log fail to sync on every retry.
+    public static func cleaned(_ notes: String?) -> String? {
+        let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return nil }
+        guard trimmed.utf16.count > maximumUTF16Length else { return trimmed }
+        var length = 0
+        let fitting = trimmed.prefix { character in
+            length += character.utf16.count
+            return length <= maximumUTF16Length
+        }
+        return String(fitting)
+    }
+}

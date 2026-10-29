@@ -374,7 +374,8 @@ private struct CreateLogPayload: Encodable {
     init(log: LocalActivityLog) {
         idempotencyKey = log.idempotencyKey
         title = log.title
-        notes = log.notes
+        // Also covers logs saved before notes were capped on entry, which would otherwise fail every retry.
+        notes = LogNotes.cleaned(log.notes)
         startedAt = log.startedAt
         endedAt = log.endedAt
         categoryIds = log.categoryIDs

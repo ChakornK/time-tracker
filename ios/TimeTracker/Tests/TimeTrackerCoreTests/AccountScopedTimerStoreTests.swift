@@ -13,6 +13,9 @@ struct AccountScopedTimerStoreTests {
             try store.currentTimer(userID: otherID)
         }
         #expect(throws: TimerStoreError.accountMismatch) {
+            try store.updateTimerNotes(timerID: UUID(), userID: otherID, notes: "Not mine")
+        }
+        #expect(throws: TimerStoreError.accountMismatch) {
             try store.pendingLogs(userID: otherID)
         }
         #expect(throws: TimerStoreError.accountMismatch) {
