@@ -4,10 +4,10 @@ import SwiftUI
 /// Tracked time by category against every hour in the period, with the remainder shown as untracked.
 struct TrackedTimePieCard: View {
     let logs: [ProductivitySummaryLog]
+    let period: AnalyticsPeriod
     let colors: CategoryColorResolver
     let now: Date
 
-    @State private var period = AnalyticsPeriod.day
     @State private var selectedAngle: Double?
 
     /// Named categories before the rest fold into "Other", keeping the chart to six slices.
@@ -32,13 +32,6 @@ struct TrackedTimePieCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            Picker("Period", selection: $period) {
-                Text("Today").tag(AnalyticsPeriod.day)
-                Text("7 days").tag(AnalyticsPeriod.week)
-                Text("Month").tag(AnalyticsPeriod.month)
-            }
-            .pickerStyle(.segmented)
 
             Chart(slices) { slice in
                 SectorMark(
@@ -126,7 +119,7 @@ struct TrackedTimePieCard: View {
         let hours = Int((analytics.interval.duration / 3_600).rounded())
         return switch period {
         case .day: "Out of the 24 hours in today"
-        case .week: "Out of the \(hours) hours in the last 7 days"
+        case .week: "Out of the \(hours) hours in this week"
         case .month: "Out of the \(hours) hours in \(analytics.interval.start.formatted(.dateTime.month(.wide)))"
         }
     }

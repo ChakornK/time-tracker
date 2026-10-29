@@ -1,13 +1,14 @@
 import Charts
 import SwiftUI
 
-/// Hours per day for the user's top categories, with one bar per category on each day.
+/// Hours per day for the user's top categories, with one bar per category on each day. A single day
+/// has nothing to compare, so Today shows the ranked totals alone.
 struct CategoryBarChartCard: View {
     let logs: [ProductivitySummaryLog]
+    let period: AnalyticsPeriod
     let colors: CategoryColorResolver
     let now: Date
 
-    @State private var period = AnalyticsPeriod.week
     @State private var requestedCategoryCount = 3
     @State private var selectedDate: Date?
 
@@ -24,16 +25,16 @@ struct CategoryBarChartCard: View {
             Text("Time by category")
                 .font(.headline)
 
-            Picker("Range", selection: $period) {
-                Text("Last 7 days").tag(AnalyticsPeriod.week)
-                Text("This month").tag(AnalyticsPeriod.month)
-            }
-            .pickerStyle(.segmented)
-
             if ranked.isEmpty {
-                Text("No time logged \(period == .week ? "in the last 7 days" : "this month") yet.")
+                Text("No time logged \(period.phrase) yet.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+            } else if period == .day {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(ranked, id: \.self) { categoryID in
+                        LegendRow(series: colors.series(for: categoryID), seconds: analytics.totalsByCategory[categoryID] ?? 0)
+                    }
+                }
             } else {
                 Stepper(value: $requestedCategoryCount, in: 1...min(ranked.count, Self.maximumCategories)) {
                     Text("Top \(shownIDs.count) of \(ranked.count) categories")
@@ -46,7 +47,7 @@ struct CategoryBarChartCard: View {
                     dayBreakdown(day: day, analytics: analytics, shownIDs: shownIDs)
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(period == .week ? "Last 7 days" : "This month")
+                        Text(period.label)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         ForEach(shownIDs, id: \.self) { categoryID in

@@ -6,13 +6,14 @@ struct CategoryTimeAnalyticsTests {
     private let writing = UUID()
     private let reading = UUID()
 
-    @Test func periodsCoverTodayLastSevenDaysAndCurrentMonth() {
+    @Test func periodsCoverTodayThisWeekAndThisMonth() {
         let now = date("2026-02-11T15:00:00Z")
 
         #expect(AnalyticsPeriod.day.interval(containing: now, calendar: calendar).duration == 86_400)
         let week = AnalyticsPeriod.week.interval(containing: now, calendar: calendar)
-        #expect(week.start == date("2026-02-05T00:00:00Z"))
-        #expect(week.end == date("2026-02-12T00:00:00Z"))
+        // The test calendar's weeks start on Sunday, so Wednesday the 11th is in the week of the 8th.
+        #expect(week.start == date("2026-02-08T00:00:00Z"))
+        #expect(week.end == date("2026-02-15T00:00:00Z"))
         #expect(AnalyticsPeriod.month.interval(containing: now, calendar: calendar).duration == 28 * 86_400)
     }
 

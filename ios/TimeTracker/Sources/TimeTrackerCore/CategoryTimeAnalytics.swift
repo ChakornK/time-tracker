@@ -7,7 +7,8 @@ public enum AnalyticsPeriod: String, CaseIterable, Identifiable, Sendable {
 
     public var id: Self { self }
 
-    /// The calendar span the period covers: today, the last seven days including today, or the current month.
+    /// The calendar span the period covers: today, this calendar week, or this calendar month. These match
+    /// `GoalPeriod`, so a weekly goal and the week's total always agree.
     public func interval(containing now: Date, calendar: Calendar = .current) -> DateInterval {
         let today = calendar.dateInterval(of: .day, for: now)
             ?? DateInterval(start: calendar.startOfDay(for: now), duration: 86_400)
@@ -15,8 +16,7 @@ public enum AnalyticsPeriod: String, CaseIterable, Identifiable, Sendable {
         case .day:
             return today
         case .week:
-            let start = calendar.date(byAdding: .day, value: -6, to: today.start) ?? today.start
-            return DateInterval(start: start, end: today.end)
+            return calendar.dateInterval(of: .weekOfYear, for: now) ?? today
         case .month:
             return calendar.dateInterval(of: .month, for: now) ?? today
         }
