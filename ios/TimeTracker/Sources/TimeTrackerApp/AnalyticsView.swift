@@ -3,10 +3,13 @@ import SwiftUI
 struct AnalyticsView: View {
     let logs: [LocalActivityLog]
     let categories: [APICategory]
+    let categoriesLoaded: Bool
     let goals: [APIGoal]
 
     var body: some View {
-        let summaryLogs = logs.map(\.productivitySummaryLog)
+        let allLogs = logs.map(\.productivitySummaryLog)
+        // Time logged to a deleted category leaves Analytics with it.
+        let summaryLogs = categoriesLoaded ? allLogs.keepingCategories(Set(categories.map(\.id))) : allLogs
         let colors = CategoryColorResolver(categories: categories)
 
         ScrollView {

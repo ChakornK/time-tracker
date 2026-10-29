@@ -52,7 +52,12 @@ struct MainTabView: View {
             .tag(Tab.timer)
 
             NavigationStack {
-                AnalyticsView(logs: model.logs, categories: model.categories.categories, goals: model.goals.goals)
+                AnalyticsView(
+                    logs: model.logs,
+                    categories: model.categories.categories,
+                    categoriesLoaded: model.categories.hasLoaded,
+                    goals: model.goals.goals
+                )
             }
             .tabItem { Label("Analytics", systemImage: "chart.bar") }
             .tag(Tab.analytics)

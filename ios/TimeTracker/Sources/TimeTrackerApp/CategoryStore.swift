@@ -8,6 +8,8 @@ final class CategoryStore {
     private let token: String
     private(set) var categories: [APICategory] = []
     private(set) var isLoading = false
+    /// Whether `categories` reflects the server yet, so an empty list isn't mistaken for "all deleted".
+    private(set) var hasLoaded = false
     private(set) var isCreating = false
 
     init(api: TrackerAPIClient, token: String) {
@@ -24,6 +26,7 @@ final class CategoryStore {
         isLoading = true
         defer { isLoading = false }
         categories = try await api.categories(accessToken: token)
+        hasLoaded = true
     }
 
     func create(named name: String) async throws -> APICategory {

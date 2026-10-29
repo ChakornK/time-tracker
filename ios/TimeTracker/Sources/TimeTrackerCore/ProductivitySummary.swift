@@ -70,3 +70,16 @@ extension [ProductivitySummaryLog] {
         return byCategory
     }
 }
+
+extension [ProductivitySummaryLog] {
+    /// Removes categories that aren't in `categoryIDs`, such as deleted ones, and drops logs left
+    /// with none. Logs that never had a category are kept.
+    public func keepingCategories(_ categoryIDs: Set<UUID>) -> [ProductivitySummaryLog] {
+        compactMap { log in
+            guard !log.categoryIDs.isEmpty else { return log }
+            let kept = log.categoryIDs.filter(categoryIDs.contains)
+            guard !kept.isEmpty else { return nil }
+            return ProductivitySummaryLog(startedAt: log.startedAt, endedAt: log.endedAt, categoryIDs: kept)
+        }
+    }
+}

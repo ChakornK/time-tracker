@@ -64,6 +64,22 @@ struct CategoryTimeAnalyticsTests {
         #expect(analytics.totalsByCategory[writing] == 3_600)
     }
 
+    @Test func deletedCategoriesAreDroppedFromLogs() {
+        let deleted = UUID()
+        let logs = [
+            log("2026-02-11T09:00:00Z", "2026-02-11T10:00:00Z", [deleted]),
+            log("2026-02-11T10:00:00Z", "2026-02-11T12:00:00Z", [writing, deleted]),
+            log("2026-02-11T12:00:00Z", "2026-02-11T12:30:00Z", []),
+        ].keepingCategories([writing, reading])
+
+        let analytics = CategoryTimeAnalytics(logs: logs, period: .day, now: date("2026-02-11T15:00:00Z"), calendar: calendar)
+
+        #expect(logs.count == 2)
+        #expect(analytics.totalsByCategory[writing] == 7_200)
+        #expect(analytics.totalsByCategory[deleted] == nil)
+        #expect(analytics.totalsByCategory[nil] == 1_800)
+    }
+
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
