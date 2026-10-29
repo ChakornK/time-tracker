@@ -5,6 +5,8 @@ struct TimerView: View {
     @State private var isShowingManualLog = false
     @State private var isAddingCategory = false
     @State private var isEditingNotes = false
+    /// Collapsed, the card shows only the chosen category, which defaults to the last one timed.
+    @State private var isShowingAllCategories = false
 
     var body: some View {
         ScrollView {
@@ -152,8 +154,27 @@ struct TimerView: View {
 
     private var startTimerCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Choose an activity")
-                .font(.headline)
+            HStack {
+                Text("Choose an activity")
+                    .font(.headline)
+                Spacer()
+                if !model.categories.categories.isEmpty {
+                    Button {
+                        withAnimation(.snappy) { isShowingAllCategories.toggle() }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(isShowingAllCategories ? "Hide" : "All categories")
+                            Image(systemName: "chevron.down")
+                                .imageScale(.small)
+                                .rotationEffect(.degrees(isShowingAllCategories ? 180 : 0))
+                                .accessibilityHidden(true)
+                        }
+                        .font(.subheadline)
+                    }
+                    .frame(minHeight: 44)
+                    .accessibilityHint("Shows every category to choose from")
+                }
+            }
 
             if model.categories.categories.isEmpty {
                 Text("Add a category to get started, such as a course, reading, exercise, or project.")
@@ -161,23 +182,36 @@ struct TimerView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Wraps onto new rows so every category stays in view, however many there are.
-            FlowLayout(spacing: 8) {
-                ForEach(model.categories.categories) { category in
-                    categoryChip(category)
+            if isShowingAllCategories || model.categories.categories.isEmpty {
+                // Wraps onto new rows so every category stays in view, however many there are.
+                FlowLayout(spacing: 8) {
+                    ForEach(model.categories.categories) { category in
+                        categoryChip(category)
+                    }
+                    Button {
+                        isAddingCategory = true
+                    } label: {
+                        Label("New category", systemImage: "plus")
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 44)
+                            .overlay(Capsule().strokeBorder(Color(uiColor: .separator), style: StrokeStyle(lineWidth: 1, dash: [4])))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.categories.isCreating)
                 }
-                Button {
-                    isAddingCategory = true
-                } label: {
-                    Label("New category", systemImage: "plus")
-                        .font(.subheadline)
-                        .lineLimit(1)
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 44)
-                        .overlay(Capsule().strokeBorder(Color(uiColor: .separator), style: StrokeStyle(lineWidth: 1, dash: [4])))
+            } else {
+                HStack(spacing: 8) {
+                    if let category = model.categories.category(withID: model.selectedCategoryID) {
+                        categoryChip(category)
+                    } else {
+                        Text("No category chosen")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.plain)
-                .disabled(model.categories.isCreating)
             }
 
             TextField("Notes (optional)", text: $model.timerNotes, axis: .vertical)
@@ -209,7 +243,13 @@ struct TimerView: View {
     private func categoryChip(_ category: APICategory) -> some View {
         let isSelected = model.selectedCategoryID == category.id
         return Button {
-            model.selectedCategoryID = category.id
+            if isShowingAllCategories {
+                model.selectedCategoryID = category.id
+                withAnimation(.snappy) { isShowingAllCategories = false }
+            } else {
+                // The lone chip in the collapsed view opens the full list.
+                withAnimation(.snappy) { isShowingAllCategories = true }
+            }
         } label: {
             // One weight for both states, so selecting a chip never widens it onto the next row.
             CategoryLabel(category: category)

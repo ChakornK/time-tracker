@@ -65,7 +65,7 @@ final class TimerHomeModel {
     func categoryWasDeleted(_ categoryID: UUID) {
         goals.removeGoals(forCategoryID: categoryID)
         if selectedCategoryID == categoryID {
-            selectedCategoryID = categories.categories.first?.id
+            selectedCategoryID = defaultCategoryID
         }
         publishWidgetSummary()
     }
@@ -80,6 +80,16 @@ final class TimerHomeModel {
         // Until categories load, an empty list would look like every category was deleted.
         guard categories.hasLoaded else { return all }
         return all.keepingCategories(Set(categories.categories.map(\.id)))
+    }
+
+    /// The category of the most recently finished log, so the next timer starts where the last one
+    /// left off. Falls back to the first category when nothing has been logged or that category is gone.
+    private var defaultCategoryID: UUID? {
+        logs.sorted { $0.endedAt > $1.endedAt }
+            .lazy
+            .flatMap(\.categoryIDs)
+            .first { self.categories.category(withID: $0) != nil }
+            ?? categories.categories.first?.id
     }
 
     var canStart: Bool {
@@ -124,7 +134,6 @@ final class TimerHomeModel {
             return
         }
         runningTimer = timer
-        selectedCategoryID = nil
         timerNotes = ""
         lastSavedDurationSeconds = nil
         errorMessage = nil
@@ -143,6 +152,7 @@ final class TimerHomeModel {
             return
         }
         reloadLocalData()
+        selectedCategoryID = defaultCategoryID
         publishWidgetSummary()
         await liveActivity.end(timerID: timer.id)
         activityState = nil
@@ -245,7 +255,7 @@ final class TimerHomeModel {
         do {
             try await categories.reload()
             if categories.category(withID: selectedCategoryID) == nil {
-                selectedCategoryID = categories.categories.first?.id
+                selectedCategoryID = defaultCategoryID
             }
             publishWidgetSummary()
         } catch let error as APIClientError where error.isUnauthorized {
