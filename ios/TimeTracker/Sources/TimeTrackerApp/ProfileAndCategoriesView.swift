@@ -331,51 +331,30 @@ struct ProfileAndCategoriesView: View {
 
     @ViewBuilder
     private func goalsAndCategories(colors: CategoryColorResolver) -> some View {
-            Section("Goals") {
-                if model.goals.isLoading && model.goals.goals.isEmpty {
-                    ProgressView("Loading goals")
-                } else if model.goals.goals.isEmpty {
-                    Text("Set a goal for how much time you want to spend on a category each day, week, or month.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(model.goals.goals) { goal in
-                        Button {
-                            goalSheet = .edit(goal)
-                        } label: {
-                            // Inside the row so each goal stays its own Form row; re-evaluates each
-                            // minute so goals reset when their day, week, or month ends.
-                            TimelineView(.everyMinute) { context in
-                                GoalProgressRow(
-                                    progress: GoalProgress(goal: goal, logs: logs, now: context.date),
-                                    series: colors.series(for: goal.categoryId)
-                                )
-                            }
-                        }
-                        .tint(.primary)
-                        .swipeActions {
-                            Button("Delete", systemImage: "trash", role: .destructive) {
-                                Task { await model.delete(goal) }
-                            }
-                            Button("Edit", systemImage: "pencil") {
-                                goalSheet = .edit(goal)
-                            }
-                            .tint(.gray)
-                        }
-                        .contextMenu {
-                            Button("Edit", systemImage: "pencil") {
-                                goalSheet = .edit(goal)
-                            }
-                            Button("Delete", systemImage: "trash", role: .destructive) {
-                                Task { await model.delete(goal) }
+            if model.goals.goals.isEmpty {
+                Section("Goals") {
+                    if model.goals.isLoading {
+                        ProgressView("Loading goals")
+                    } else {
+                        Text("Set a goal for how much time you want to spend on a category each day, week, or month.")
+                            .foregroundStyle(.secondary)
+                    }
+                    addGoalButton
+                }
+            } else {
+                ForEach(GoalPeriod.allCases) { period in
+                    let periodGoals = model.goals.goals.filter { $0.period == period }
+                    if !periodGoals.isEmpty {
+                        Section("\(period.adjective) goals") {
+                            ForEach(periodGoals) { goal in
+                                goalRow(goal, colors: colors)
                             }
                         }
                     }
                 }
-                Button("Add goal", systemImage: "plus") {
-                    goalSheet = .create
+                Section {
+                    addGoalButton
                 }
-                .frame(minHeight: 44)
-                .disabled(model.categories.categories.isEmpty)
             }
 
             Section("Categories") {
@@ -422,6 +401,48 @@ struct ProfileAndCategoriesView: View {
                 }
             }
 
+    }
+
+    private var addGoalButton: some View {
+        Button("Add goal", systemImage: "plus") {
+            goalSheet = .create
+        }
+        .frame(minHeight: 44)
+        .disabled(model.categories.categories.isEmpty)
+    }
+
+    private func goalRow(_ goal: APIGoal, colors: CategoryColorResolver) -> some View {
+        Button {
+            goalSheet = .edit(goal)
+        } label: {
+            // Inside the row so each goal stays its own Form row; re-evaluates each
+            // minute so goals reset when their day, week, or month ends.
+            TimelineView(.everyMinute) { context in
+                GoalProgressRow(
+                    progress: GoalProgress(goal: goal, logs: logs, now: context.date),
+                    series: colors.series(for: goal.categoryId),
+                    showsPeriod: false
+                )
+            }
+        }
+        .tint(.primary)
+        .swipeActions {
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                Task { await model.delete(goal) }
+            }
+            Button("Edit", systemImage: "pencil") {
+                goalSheet = .edit(goal)
+            }
+            .tint(.gray)
+        }
+        .contextMenu {
+            Button("Edit", systemImage: "pencil") {
+                goalSheet = .edit(goal)
+            }
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                Task { await model.delete(goal) }
+            }
+        }
     }
 
     private var isRenaming: Binding<Bool> {

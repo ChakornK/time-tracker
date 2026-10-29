@@ -31,14 +31,18 @@ extension GoalPeriod {
 struct GoalProgressRow: View {
     let progress: GoalProgress
     let series: ChartSeries
+    /// Off where goals are already grouped under a period heading.
+    var showsPeriod = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 CategoryLabel(series: series)
-                Text(progress.goal.period.adjective)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if showsPeriod {
+                    Text(progress.goal.period.adjective)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer(minLength: 8)
                 if progress.isComplete {
                     Image(systemName: "checkmark.circle.fill")
