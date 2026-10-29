@@ -7,7 +7,7 @@ import WidgetKit
 struct TimerLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: TimerActivityAttributes.self) { context in
-            LiveTimerLockScreenView(state: context.state)
+            LiveTimerLockScreenView(state: context.state, timerID: context.attributes.timerID)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -28,6 +28,14 @@ struct TimerLiveActivity: Widget {
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 110, alignment: .trailing)
                         .padding(.trailing, 4)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    Button(intent: StopTimerIntent(timerID: context.attributes.timerID)) {
+                        Label("Stop and save", systemImage: "stop.fill")
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
                 }
             } compactLeading: {
                 Circle()

@@ -15,8 +15,13 @@ struct TimeTrackerApp: App {
             fatalError("Could not open the local timer store: \(error)")
         }
         let liveActivity = LiveActivityController()
-        timerStore = SwiftDataTimerStore(modelContainer: container)
+        let timerStore = SwiftDataTimerStore(modelContainer: container)
+        self.timerStore = timerStore
         self.liveActivity = liveActivity
+        // Also runs when the system launches the app in the background for the Live Activity's Stop button.
+        TimerIntentHandling.stop = { timerID in
+            await liveActivity.stopFromActivity(timerID: timerID, store: timerStore)
+        }
         _session = State(initialValue: AuthSession(
             api: TrackerAPIClient(baseURL: AppConfiguration.apiBaseURL),
             tokenStore: KeychainTokenStore(),

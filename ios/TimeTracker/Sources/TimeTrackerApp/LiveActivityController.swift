@@ -1,5 +1,11 @@
 import ActivityKit
 import Foundation
+import WidgetKit
+
+extension Notification.Name {
+    /// Posted after a timer is stopped outside the app's screens, such as from its Live Activity.
+    static let timerStoppedElsewhere = Notification.Name("timerStoppedElsewhere")
+}
 
 @MainActor
 final class LiveActivityController {
@@ -18,6 +24,23 @@ final class LiveActivityController {
             attributes: TimerActivityAttributes(timerID: timer.id),
             content: ActivityContent(state: state, staleDate: nil)
         )
+    }
+
+    /// Stops a timer from its Live Activity's Stop button. The app may be running in the background with
+    /// no screens, so this saves the log and updates the widget itself; an open app refreshes from the
+    /// notification and syncs.
+    func stopFromActivity(timerID: UUID, store: any TimerStoreProtocol) async {
+        let defaults = WidgetSummaryStorage.sharedDefaults
+        let endedAt = Date.now
+        if let userID = WidgetSummaryStorage.activeUserID(from: defaults),
+           (try? store.stop(timerID: timerID, userID: userID, endedAt: endedAt)) != nil {
+            if let snapshot = WidgetSummaryStorage.activeSnapshot(from: defaults) {
+                WidgetSummaryStorage.publish(snapshot.finishingRunningTimer(at: endedAt), for: userID, to: defaults)
+                WidgetCenter.shared.reloadTimelines(ofKind: WidgetSummaryStorage.widgetKind)
+            }
+            NotificationCenter.default.post(name: .timerStoppedElsewhere, object: nil)
+        }
+        await end(timerID: timerID)
     }
 
     func end(timerID: UUID) async {

@@ -26,6 +26,7 @@ final class TimerHomeModel {
     var timerNotes = ""
     var visibility: ActivityVisibility = .public
     var errorMessage: String?
+    private var stoppedElsewhereObserver: (any NSObjectProtocol)?
     var stopFailureMessage: String?
 
     init(
@@ -117,11 +118,32 @@ final class TimerHomeModel {
     }
 
     func load() async {
+        observeTimerStoppedElsewhere()
         reloadLocalData()
         publishWidgetSummary()
         await liveActivity.restore(runningTimer)
         activityState = runningTimer.flatMap { liveActivity.state(for: $0.id) }
         await refreshRemoteData()
+    }
+
+    /// The block keeps only a weak reference, so a signed-out session's model just stops reacting.
+    private func observeTimerStoppedElsewhere() {
+        guard stoppedElsewhereObserver == nil else { return }
+        stoppedElsewhereObserver = NotificationCenter.default.addObserver(
+            forName: .timerStoppedElsewhere,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in await self?.timerStoppedElsewhere() }
+        }
+    }
+
+    private func timerStoppedElsewhere() async {
+        reloadLocalData()
+        selectedCategoryID = defaultCategoryID
+        activityState = nil
+        publishWidgetSummary()
+        await synchronize()
     }
 
     func refreshRemoteData() async {

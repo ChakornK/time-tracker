@@ -36,6 +36,16 @@ struct WidgetTimelineEntryTests {
         #expect(WidgetTimelineEntry(date: date("2026-02-11T12:30:00Z"), snapshot: snapshot, calendar: calendar).runningTimer == running)
     }
 
+    @Test func finishingTheRunningTimerCountsItsTime() {
+        let running = WidgetSnapshot.RunningTimer(startedAt: date("2026-02-11T11:00:00Z"), title: "Reading", colorHex: nil)
+        let snapshot = WidgetSnapshot(logs: [], runningTimer: running, updatedAt: date("2026-02-11T11:00:00Z"), calendar: calendar)
+
+        let finished = snapshot.finishingRunningTimer(at: date("2026-02-11T11:30:00Z"))
+
+        #expect(finished.runningTimer == nil)
+        #expect(WidgetTimelineEntry(date: date("2026-02-11T12:00:00Z"), snapshot: finished, calendar: calendar).todaySeconds == 1_800)
+    }
+
     @Test func missingSnapshotProducesHonestEmptyState() {
         let entry = WidgetTimelineEntry(date: Date(timeIntervalSince1970: 100), snapshot: nil)
 

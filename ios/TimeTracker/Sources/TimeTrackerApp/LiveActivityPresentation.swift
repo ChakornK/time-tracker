@@ -17,6 +17,8 @@ extension TimerActivityAttributes.ContentState {
 
 struct LiveTimerLockScreenView: View {
     let state: TimerActivityAttributes.ContentState
+    /// Shows the Stop button. `nil` in the app's preview, where the timer card has its own.
+    var timerID: UUID?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -38,8 +40,30 @@ struct LiveTimerLockScreenView: View {
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 120, alignment: .trailing)
                 .accessibilityLabel("Elapsed time")
+            if let timerID {
+                StopTimerButton(timerID: timerID)
+            }
         }
         .padding(16)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
+
+/// Stops the timer and saves its log without opening the app.
+struct StopTimerButton: View {
+    let timerID: UUID
+
+    var body: some View {
+        Button(intent: StopTimerIntent(timerID: timerID)) {
+            Label("Stop", systemImage: "stop.fill")
+                .labelStyle(.iconOnly)
+                .font(.title3)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .tint(.red)
+        .accessibilityLabel("Stop timer")
+    }
+}
+

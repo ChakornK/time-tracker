@@ -46,6 +46,19 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         self.updatedAt = updatedAt
     }
 
+    private init(intervals: [Interval], runningTimer: RunningTimer?, updatedAt: Date) {
+        self.intervals = intervals
+        self.runningTimer = runningTimer
+        self.updatedAt = updatedAt
+    }
+
+    /// The snapshot after the running timer stops, for when it's stopped with no app UI to republish.
+    public func finishingRunningTimer(at endedAt: Date) -> WidgetSnapshot {
+        guard let runningTimer else { return self }
+        let finished = Interval(startedAt: runningTimer.startedAt, endedAt: max(endedAt, runningTimer.startedAt))
+        return WidgetSnapshot(intervals: intervals + [finished], runningTimer: nil, updatedAt: endedAt)
+    }
+
     /// Today's and this week's totals as of `now`, which may be days after the snapshot was taken.
     public func summary(at now: Date, calendar: Calendar = .current) -> ProductivitySummary {
         ProductivitySummary(
