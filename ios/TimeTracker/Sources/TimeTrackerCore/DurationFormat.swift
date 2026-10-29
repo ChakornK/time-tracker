@@ -24,7 +24,8 @@ public enum DurationFormat {
     public static func spoken(_ seconds: Int) -> String {
         let remaining = max(0, seconds)
         guard remaining >= 60 else { return remaining > 0 ? "less than a minute" : "0 minutes" }
-        return Duration.seconds(remaining - remaining % 60).formatted(.units(allowed: [.hours, .minutes], width: .wide))
+        return Duration.seconds(remaining - remaining % 60)
+            .formatted(.units(allowed: [.hours, .minutes], width: .wide).locale(Locale(identifier: "en_US")))
     }
 
     public static func spoken(_ seconds: Double) -> String {

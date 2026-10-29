@@ -6,6 +6,15 @@ struct AppRootView: View {
     let liveActivity: LiveActivityController
 
     var body: some View {
+        Group {
+            content
+        }
+        // Neutral, so color in the app only ever means a category.
+        .tint(.primary)
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if let token = session.accessToken, let user = session.user {
             MainTabView(
                 session: session,
@@ -38,7 +47,7 @@ private struct SessionRestoreView: View {
                     Button("Try again") {
                         Task { await session.restoreSession() }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .primaryActionStyle()
                     Button("Sign out", role: .destructive, action: session.signOut)
                 }
             } else {

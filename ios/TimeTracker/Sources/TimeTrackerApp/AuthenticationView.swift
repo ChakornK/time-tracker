@@ -86,7 +86,7 @@ struct AuthenticationView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 50)
         }
-        .buttonStyle(.borderedProminent)
+        .primaryActionStyle()
         .disabled(session.isLoading)
         .padding(.horizontal, 20)
         .padding(.vertical, 8)

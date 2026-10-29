@@ -85,8 +85,6 @@ struct MainTabView: View {
             .tabItem { Label("Profile", systemImage: "person.crop.circle") }
             .tag(Tab.profile)
         }
-        // Neutral, so color in the app only ever means a category.
-        .tint(.primary)
         .task { await model.load() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {

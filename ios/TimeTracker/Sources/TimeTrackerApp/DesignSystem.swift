@@ -8,6 +8,32 @@ extension View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
+
+    /// The main call to action. The fill is the neutral tint, which is white in dark mode, so the
+    /// label takes the background color to stay readable in both modes.
+    func primaryActionStyle() -> some View {
+        self
+            .buttonStyle(.borderedProminent)
+            .foregroundStyle(Color(uiColor: .systemBackground))
+    }
+}
+
+/// A duration in the shared compact format that VoiceOver reads in words.
+struct DurationText: View {
+    let seconds: Double
+
+    init(_ seconds: Double) {
+        self.seconds = seconds
+    }
+
+    init(_ seconds: Int) {
+        self.seconds = Double(seconds)
+    }
+
+    var body: some View {
+        Text(DurationFormat.compact(seconds))
+            .accessibilityLabel(DurationFormat.spoken(seconds))
+    }
 }
 
 /// A category's color dot and name. Color in the app always means a category, so this is the only
@@ -46,6 +72,8 @@ struct StatusBanner: View {
 
     let kind: Kind
     let message: String
+    /// What VoiceOver reads instead of `message`, for text such as "2h 30m" that it reads letter by letter.
+    var spokenMessage: String?
     var actionTitle: String?
     var isActionDisabled = false
     var action: (() -> Void)?
@@ -55,6 +83,7 @@ struct StatusBanner: View {
             Label {
                 Text(message)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(spokenMessage ?? message)
             } icon: {
                 Image(systemName: symbol)
                     .foregroundStyle(symbolColor)

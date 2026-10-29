@@ -21,9 +21,12 @@ struct TimerView: View {
                 manualLogCard
 
                 if let duration = model.lastSavedDurationSeconds {
-                    StatusBanner(kind: .success, message: "Saved \(DurationFormat.compact(duration)).")
-                        .accessibilityLabel("Saved \(DurationFormat.spoken(duration)).")
-                        .cardStyle()
+                    StatusBanner(
+                        kind: .success,
+                        message: "Saved \(DurationFormat.compact(duration)).",
+                        spokenMessage: "Saved \(DurationFormat.spoken(duration))."
+                    )
+                    .cardStyle()
                 }
 
                 if let errorMessage = model.errorMessage {
@@ -129,7 +132,7 @@ struct TimerView: View {
                 Label("Stop and save", systemImage: "stop.fill")
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
-            .buttonStyle(.borderedProminent)
+            .primaryActionStyle()
         }
         .cardStyle()
     }
@@ -184,7 +187,7 @@ struct TimerView: View {
                 Label("Start timer", systemImage: "record.circle")
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
-            .buttonStyle(.borderedProminent)
+            .primaryActionStyle()
             .disabled(!model.canStart)
         }
         .cardStyle()

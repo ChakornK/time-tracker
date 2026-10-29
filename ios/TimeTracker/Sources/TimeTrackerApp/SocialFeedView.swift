@@ -104,7 +104,7 @@ struct SocialFeedView: View {
                             Text("Find people")
                                 .frame(minWidth: 120, minHeight: 44)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .primaryActionStyle()
                     }
                 }
                 .refreshable { await model.loadFirstPage() }

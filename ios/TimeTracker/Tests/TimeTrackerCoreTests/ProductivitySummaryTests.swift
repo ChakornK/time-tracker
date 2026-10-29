@@ -18,7 +18,8 @@ struct ProductivitySummaryTests {
     @Test func spokenDurationsNeverReadAsEmpty() {
         #expect(DurationFormat.spoken(0) == "0 minutes")
         #expect(DurationFormat.spoken(30) == "less than a minute")
-        #expect(DurationFormat.spoken(9_030).contains("30"))
+        #expect(DurationFormat.spoken(3_600) == "1 hour")
+        #expect(DurationFormat.spoken(9_030) == "2 hours, 30 minutes")
     }
 
     @Test func sharedSummaryModelCalculatesCalendarTotals() {
