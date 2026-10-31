@@ -252,6 +252,8 @@ struct SocialFeedView: View {
                 }
             }
             .listStyle(.plain)
+            // Logs on this device change outside `withAnimation`, such as one deleted from the list.
+            .animation(.snappy, value: unsyncedLogs.map(\.id))
             .refreshable { await model.loadFirstPage() }
         }
     }

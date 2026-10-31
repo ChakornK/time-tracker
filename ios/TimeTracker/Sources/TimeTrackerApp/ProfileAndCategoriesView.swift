@@ -255,6 +255,8 @@ struct ProfileAndCategoriesView: View {
                 }
             }
         }
+        // Logs on this device change outside `withAnimation`, such as one deleted from My logs.
+        .animation(.snappy, value: localLogs.map(\.id))
         .navigationTitle("Profile")
         .task { await model.load() }
         .logActionPresentations(state: $logActions, categories: model.categories.categories, change: changeLog)

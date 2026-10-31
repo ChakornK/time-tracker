@@ -39,35 +39,86 @@ typealias LogChanger = @MainActor (LogChange, _ localID: UUID?, _ serverID: UUID
 /// The state behind a list's log swipe actions. One per list, shared by its rows.
 struct LogActionState {
     var editing: LogTarget?
-    var deleting: LogTarget?
+    /// Confirmed in the row's dialog, and carried out by `logActionPresentations`.
+    var confirmedDeletion: LogTarget?
+    /// Logs slid out of their row while their deletion finishes, until they leave the list.
+    var deletingIDs: Set<UUID> = []
     /// A log stuck waiting to sync, offered removal from this device instead.
     var stuck: LogTarget?
     var message: String?
 }
 
+/// Edit and Delete on a swipe, with the delete confirmation attached to the row so its popover
+/// points at the log being deleted rather than at the top of the list.
+private struct LogSwipeActions: ViewModifier {
+    let target: LogTarget
+    @Binding var state: LogActionState
+    /// Kept on the row so opening the dialog doesn't redraw the whole list under it.
+    @State private var isConfirmingDeletion = false
+
+    func body(content: Content) -> some View {
+        let isDeleting = state.deletingIDs.contains(target.id)
+        content
+            // Slides on out to the left, the way it was swiped, leaving its space until it's gone.
+            .visualEffect { view, proxy in
+                view.offset(x: isDeleting ? -proxy.size.width : 0)
+            }
+            .opacity(isDeleting ? 0 : 1)
+            .overlay {
+                if isDeleting {
+                    ProgressView("Deleting")
+                        .controlSize(.small)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .transition(.opacity)
+                }
+            }
+            .allowsHitTesting(!isDeleting)
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                // A row on its way out can't be changed again; hit testing alone doesn't stop a swipe.
+                if !isDeleting {
+                    swipeButtons
+                }
+            }
+            .confirmationDialog("Delete this log?", isPresented: $isConfirmingDeletion, titleVisibility: .visible) {
+                Button("Delete log", role: .destructive) {
+                    state.confirmedDeletion = target
+                }
+            } message: {
+                Text("Its time is removed from your feed, Insights and goals.")
+            }
+    }
+
+    @ViewBuilder
+    private var swipeButtons: some View {
+        // Not `role: .destructive`: List animates a destructive action's row away as if it were
+        // deleted, which takes the row's dialog with it before it can be answered.
+        Button("Delete", systemImage: "trash") {
+            if target.waitsForSync {
+                state.stuck = target
+            } else {
+                isConfirmingDeletion = true
+            }
+        }
+        .tint(.red)
+        Button("Edit", systemImage: "pencil") {
+            if target.waitsForSync {
+                state.stuck = target
+            } else {
+                state.editing = target
+            }
+        }
+        .tint(.gray)
+    }
+}
+
 extension View {
     /// Edit and Delete on a swipe, for the person's own logs.
     func logSwipeActions(_ target: LogTarget, state: Binding<LogActionState>) -> some View {
-        swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                if target.waitsForSync {
-                    state.wrappedValue.stuck = target
-                } else {
-                    state.wrappedValue.deleting = target
-                }
-            }
-            Button("Edit", systemImage: "pencil") {
-                if target.waitsForSync {
-                    state.wrappedValue.stuck = target
-                } else {
-                    state.wrappedValue.editing = target
-                }
-            }
-            .tint(.gray)
-        }
+        modifier(LogSwipeActions(target: target, state: state))
     }
 
-    /// The editor, delete confirmation and error alert that the swipe actions open.
+    /// The editor and alerts that the swipe actions open, and the deletion a row confirms.
     /// - Parameter onChanged: Runs after a change succeeds, such as updating a feed's copy of the entry.
     func logActionPresentations(
         state: Binding<LogActionState>,
@@ -81,24 +132,30 @@ extension View {
                 onChanged(target, .edit(edit))
             }
         }
-        .confirmationDialog(
-            "Delete this log?",
-            isPresented: Binding(get: { state.wrappedValue.deleting != nil }, set: { if !$0 { state.wrappedValue.deleting = nil } }),
-            titleVisibility: .visible,
-            presenting: state.wrappedValue.deleting
-        ) { target in
-            Button("Delete log", role: .destructive) {
-                Task {
-                    do {
-                        try await change(.delete, target.localID, target.serverID)
+        .onChange(of: state.wrappedValue.confirmedDeletion) { _, target in
+            guard let target else { return }
+            state.wrappedValue.confirmedDeletion = nil
+            guard !state.wrappedValue.deletingIDs.contains(target.id) else { return }
+            Task {
+                // The slide plays before the change, because a log on this device leaves the list
+                // the moment it's deleted and would vanish without being seen to go.
+                withAnimation(.easeIn(duration: 0.3)) {
+                    _ = state.wrappedValue.deletingIDs.insert(target.id)
+                }
+                try? await Task.sleep(for: .milliseconds(300))
+                do {
+                    try await change(.delete, target.localID, target.serverID)
+                    withAnimation(.snappy) {
                         onChanged(target, .delete)
-                    } catch {
-                        state.wrappedValue.message = error.localizedDescription
+                        _ = state.wrappedValue.deletingIDs.remove(target.id)
                     }
+                } catch {
+                    withAnimation(.snappy) {
+                        _ = state.wrappedValue.deletingIDs.remove(target.id)
+                    }
+                    state.wrappedValue.message = error.localizedDescription
                 }
             }
-        } message: { _ in
-            Text("Its time is removed from your feed, Insights and goals.")
         }
         .alert(
             "This log is still being sent",
