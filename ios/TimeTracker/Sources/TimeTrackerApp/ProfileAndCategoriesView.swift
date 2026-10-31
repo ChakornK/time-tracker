@@ -236,7 +236,8 @@ struct ProfileAndCategoriesView: View {
                 myLogs
             }
 
-            if let successMessage = model.successMessage {
+            // Successes are for goals and categories, so they stay off My logs.
+            if page == .goalsAndCategories, let successMessage = model.successMessage {
                 Section {
                     StatusBanner(kind: .success, message: successMessage)
                 }
