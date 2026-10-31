@@ -12,6 +12,7 @@ struct MainTabView: View {
     let token: String
     let user: APIUser
     @State private var model: TimerHomeModel
+    @State private var social: SocialStore
     @State private var selectedTab = Tab.timer
     @Environment(\.scenePhase) private var scenePhase
 
@@ -35,6 +36,7 @@ struct MainTabView: View {
             liveActivity: liveActivity,
             onAuthenticationExpired: session.expireSession
         ))
+        _social = State(initialValue: SocialStore(api: session.api, token: token, viewerID: user.id))
     }
 
     var body: some View {
@@ -47,9 +49,7 @@ struct MainTabView: View {
 
             NavigationStack {
                 SocialFeedView(
-                    api: session.api,
-                    token: token,
-                    viewerID: user.id,
+                    social: social,
                     localLogs: model.logs,
                     categories: model.categories.categories,
                     changeLog: model.changeLog
@@ -67,6 +67,7 @@ struct MainTabView: View {
             NavigationStack {
                 ProfileAndCategoriesView(
                     user: session.user ?? user,
+                    social: social,
                     logs: model.summaryLogs,
                     localLogs: model.logs,
                     categories: model.categories,
@@ -82,6 +83,7 @@ struct MainTabView: View {
                                 api: session.api,
                                 token: token,
                                 user: session.user ?? user,
+                                social: social,
                                 onProfileChanged: session.updateUser,
                                 onSignOut: session.signOut
                             )
@@ -98,6 +100,7 @@ struct MainTabView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await model.refreshRemoteData() }
+                Task { await social.refresh() }
             }
         }
     }

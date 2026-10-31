@@ -81,10 +81,19 @@ final class SettingsModel {
 
 struct SettingsView: View {
     @State private var model: SettingsModel
+    private let social: SocialStore
     private let onSignOut: () -> Void
 
-    init(api: TrackerAPIClient, token: String, user: APIUser, onProfileChanged: @escaping (APIUser) -> Void, onSignOut: @escaping () -> Void) {
+    init(
+        api: TrackerAPIClient,
+        token: String,
+        user: APIUser,
+        social: SocialStore,
+        onProfileChanged: @escaping (APIUser) -> Void,
+        onSignOut: @escaping () -> Void
+    ) {
         _model = State(initialValue: SettingsModel(api: api, token: token, user: user, onProfileChanged: onProfileChanged))
+        self.social = social
         self.onSignOut = onSignOut
     }
 
@@ -119,6 +128,8 @@ struct SettingsView: View {
                 Text("Enter your current password to confirm the change.")
             }
 
+            PrivacySection(social: social)
+
             if let successMessage = model.successMessage {
                 Section {
                     StatusBanner(kind: .success, message: successMessage)
@@ -135,5 +146,43 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+    }
+}
+
+/// Whether new followers need approval.
+private struct PrivacySection: View {
+    let social: SocialStore
+    /// The value being saved, shown while the server confirms so the switch doesn't snap back.
+    @State private var pendingValue: Bool?
+    @State private var errorMessage: String?
+
+    var body: some View {
+        Section {
+            Toggle("Private account", isOn: Binding(
+                get: { pendingValue ?? social.summary?.isPrivate ?? false },
+                set: { isPrivate in
+                    guard pendingValue == nil else { return }
+                    pendingValue = isPrivate
+                    Task {
+                        defer { pendingValue = nil }
+                        do {
+                            try await social.setPrivateAccount(isPrivate)
+                            errorMessage = nil
+                        } catch {
+                            errorMessage = "Your privacy setting could not be saved. Try again."
+                        }
+                    }
+                }
+            ))
+            .disabled(social.summary == nil || pendingValue != nil)
+            if let errorMessage {
+                StatusBanner(kind: .error, message: errorMessage)
+            }
+        } header: {
+            Text("Privacy")
+        } footer: {
+            Text("When your account is private, new followers need your approval before they see your activity. People who already follow you keep following. Turning this off approves any waiting requests.")
+        }
+        .task { await social.refresh() }
     }
 }

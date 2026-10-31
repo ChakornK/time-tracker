@@ -178,9 +178,11 @@ struct ProfileAndCategoriesView: View {
     @State private var renameText = ""
     @State private var logActions = LogActionState()
     private let changeLog: LogChanger
+    private let social: SocialStore
 
     init(
         user: APIUser,
+        social: SocialStore,
         logs: [ProductivitySummaryLog],
         localLogs: [LocalActivityLog],
         categories: CategoryStore,
@@ -190,6 +192,7 @@ struct ProfileAndCategoriesView: View {
         changeLog: @escaping LogChanger
     ) {
         self.user = user
+        self.social = social
         self.logs = logs
         self.localLogs = localLogs
         self.changeLog = changeLog
@@ -219,6 +222,12 @@ struct ProfileAndCategoriesView: View {
                     }
                 }
                 .padding(.vertical, 4)
+
+                NavigationLink {
+                    FollowManagementView(social: social)
+                } label: {
+                    socialLine
+                }
 
                 Picker("Show", selection: $page) {
                     Text("Goals & categories").tag(Page.goalsAndCategories)
@@ -261,6 +270,7 @@ struct ProfileAndCategoriesView: View {
         .animation(.snappy, value: model.categories.categories.map(\.id))
         .navigationTitle("Profile")
         .task { await model.load() }
+        .task { await social.refresh() }
         .logActionPresentations(state: $logActions, categories: model.categories.categories, change: changeLog)
         .alert("Rename category", isPresented: isRenaming, presenting: renamingCategory) { category in
             TextField("Category name", text: $renameText)
@@ -277,6 +287,28 @@ struct ProfileAndCategoriesView: View {
             case .edit(let goal):
                 GoalEditorSheet(goals: model.goals, categories: model.categories.categories, editing: goal)
             }
+        }
+    }
+
+    /// "3 followers · 5 following", plus waiting requests, opening People.
+    @ViewBuilder
+    private var socialLine: some View {
+        if let summary = social.summary {
+            HStack(spacing: 6) {
+                Text("\(summary.followerCount) \(summary.followerCount == 1 ? "follower" : "followers") · \(summary.followingCount) following")
+                if summary.pendingRequestCount > 0 {
+                    Text("\(summary.pendingRequestCount) \(summary.pendingRequestCount == 1 ? "request" : "requests")")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.red, in: .capsule)
+                }
+            }
+            .font(.subheadline)
+        } else {
+            Text("People")
+                .font(.subheadline)
         }
     }
 

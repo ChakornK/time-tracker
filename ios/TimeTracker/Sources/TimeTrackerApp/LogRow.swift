@@ -73,6 +73,8 @@ struct LogRowContent: Identifiable {
 
 struct LogRow: View {
     let content: LogRowContent
+    /// Opens another person's profile from their name; nil leaves the name plain.
+    var onOpenAuthor: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -83,12 +85,11 @@ struct LogRow: View {
                         Text("You")
                             .font(.subheadline.weight(.semibold))
                     case .person(let displayName, let username):
-                        Text(displayName)
-                            .font(.subheadline.weight(.semibold))
-                        Text("@\(username)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        // A tap gesture rather than a Button: inside the combined accessibility
+                        // element a Button would become every row's VoiceOver activate action.
+                        authorName(displayName: displayName, username: username)
+                            .contentShape(.rect)
+                            .onTapGesture { onOpenAuthor?() }
                     }
                     Spacer(minLength: 8)
                     timeText
@@ -144,6 +145,23 @@ struct LogRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+        // The combined row can't expose the name's button, so VoiceOver gets it as an action.
+        .accessibilityActions {
+            if let onOpenAuthor {
+                Button("View profile", action: onOpenAuthor)
+            }
+        }
+    }
+
+    private func authorName(displayName: String, username: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(displayName)
+                .font(.subheadline.weight(.semibold))
+            Text("@\(username)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
     }
 
     private var isYours: Bool {

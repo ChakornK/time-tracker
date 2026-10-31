@@ -3,8 +3,7 @@ import SwiftUI
 @MainActor
 @Observable
 final class SocialFeedModel {
-    private let api: TrackerAPIClient
-    private let token: String
+    private let social: SocialStore
     private(set) var entries: [FeedEntry] = []
     private(set) var nextCursor: String?
     private(set) var isLoading = false
@@ -19,10 +18,12 @@ final class SocialFeedModel {
     /// instead of mixing the old feed back into the new one.
     private var loadGeneration = 0
 
-    init(api: TrackerAPIClient, token: String) {
-        self.api = api
-        self.token = token
+    init(social: SocialStore) {
+        self.social = social
     }
+
+    private var api: TrackerAPIClient { social.api }
+    private var token: String { social.token }
 
     func loadFirstPage() async {
         guard !isLoading else {
@@ -38,6 +39,7 @@ final class SocialFeedModel {
         errorMessage = nil
         do {
             let page = try await api.feedPage(accessToken: token)
+            social.absorb(page.items)
             entries = page.items
             nextCursor = page.nextCursor
         } catch {
@@ -79,6 +81,7 @@ final class SocialFeedModel {
             do {
                 let page = try await api.feedPage(accessToken: token)
                 guard generation == loadGeneration else { return }
+                social.absorb(page.items)
                 let known = Set(entries.map(\.id))
                 if page.nextCursor != nil && !page.items.contains(where: { known.contains($0.id) }) {
                     // More than a page arrived since the last load, so there would be a gap below it.
@@ -105,6 +108,14 @@ final class SocialFeedModel {
         entries.removeAll { $0.id == id }
     }
 
+    func toggleKudos(on entry: FeedEntry) async {
+        do {
+            try await social.toggleKudos(on: entry)
+        } catch {
+            errorMessage = "Kudos could not be saved. Try again."
+        }
+    }
+
     func loadMore() async {
         guard !isLoadingMore, let nextCursor else { return }
         isLoadingMore = true
@@ -113,6 +124,7 @@ final class SocialFeedModel {
         do {
             let page = try await api.feedPage(accessToken: token, cursor: nextCursor)
             guard generation == loadGeneration else { return }
+            social.absorb(page.items)
             var seen = Set(entries.map(\.id))
             entries.append(contentsOf: page.items.filter { seen.insert($0.id).inserted })
             self.nextCursor = page.nextCursor
@@ -128,30 +140,30 @@ final class SocialFeedModel {
 /// come from this device and sit at the top until the server has them.
 struct SocialFeedView: View {
     @State private var model: SocialFeedModel
-    private let api: TrackerAPIClient
-    private let token: String
-    private let viewerID: UUID
+    private let social: SocialStore
     private let localLogs: [LocalActivityLog]
     private let categories: [APICategory]
     private let changeLog: LogChanger
     @State private var logActions = LogActionState()
+    @State private var profileUserID: UUID?
+    @State private var commentsEntry: EntryLink?
 
     init(
-        api: TrackerAPIClient,
-        token: String,
-        viewerID: UUID,
+        social: SocialStore,
         localLogs: [LocalActivityLog],
         categories: [APICategory],
         changeLog: @escaping LogChanger
     ) {
-        self.api = api
-        self.token = token
-        self.viewerID = viewerID
+        self.social = social
         self.localLogs = localLogs
         self.categories = categories
         self.changeLog = changeLog
-        _model = State(initialValue: SocialFeedModel(api: api, token: token))
+        _model = State(initialValue: SocialFeedModel(social: social))
     }
+
+    private var viewerID: UUID { social.viewerID }
+
+    private var pendingRequests: Int { social.summary?.pendingRequestCount ?? 0 }
 
     /// A running timer lives on the Timer tab, and a synced log arrives with the server's feed.
     private var unsyncedLogs: [LocalActivityLog] {
@@ -163,6 +175,17 @@ struct SocialFeedView: View {
     var body: some View {
         content
             .task { await model.loadFirstPage() }
+            .task { await social.refresh() }
+            // A follow made on any screen changes whose logs belong here.
+            .onChange(of: social.followsVersion) {
+                Task { await model.reload() }
+            }
+            .navigationDestination(item: $profileUserID) { userID in
+                UserProfileView(social: social, userID: userID)
+            }
+            .navigationDestination(item: $commentsEntry) { link in
+                LogDetailView(social: social, entry: link.entry)
+            }
             // A log that syncs leaves the device list, so fetch the server's copy.
             .onChange(of: unsyncedLogs.map(\.id)) { old, new in
                 if !Set(old).isSubset(of: Set(new)) {
@@ -189,11 +212,23 @@ struct SocialFeedView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
-                        FollowManagementView(api: api, token: token) { Task { await model.reload() } }
+                        FollowManagementView(social: social)
                     } label: {
                         Label("People", systemImage: "person.2")
+                            .overlay(alignment: .topTrailing) {
+                                if pendingRequests > 0 {
+                                    Text("\(pendingRequests)")
+                                        .font(.caption2.weight(.bold).monospacedDigit())
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 5)
+                                        .frame(minWidth: 18, minHeight: 18)
+                                        .background(.red, in: .capsule)
+                                        .offset(x: 10, y: -8)
+                                }
+                            }
                     }
-                    .accessibilityLabel("Manage people you follow")
+                    .accessibilityLabel("People")
+                    .accessibilityValue(pendingRequests > 0 ? "\(pendingRequests) follow requests" : "")
                 }
             }
     }
@@ -222,7 +257,7 @@ struct SocialFeedView: View {
                         Text("Time you log appears here, along with activity from people you follow.")
                     } actions: {
                         NavigationLink {
-                            FollowManagementView(api: api, token: token) { Task { await model.reload() } }
+                            FollowManagementView(social: social)
                         } label: {
                             Text("Find people")
                                 .frame(minWidth: 120, minHeight: 44)
@@ -243,18 +278,31 @@ struct SocialFeedView: View {
                 let unsyncedKeys = Set(unsyncedLogs.map(\.idempotencyKey))
                 let visibleEntries = model.entries.filter { $0.idempotencyKey.map { !unsyncedKeys.contains($0) } ?? true }
                 ForEach(visibleEntries) { entry in
-                    LogRow(content: LogRowContent(entry: entry, viewerID: viewerID))
-                        .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
-                        .modifier(OwnLogSwipeActions(
-                            target: entry.author.id == viewerID ? LogTarget(entry: entry, localLogs: localLogs) : nil,
-                            state: $logActions
-                        ))
-                        .task {
-                            // The last visible row, since the last loaded entry may be hidden above.
-                            if entry.id == visibleEntries.last?.id {
-                                await model.loadMore()
-                            }
+                    let isYours = entry.author.id == viewerID
+                    VStack(alignment: .leading, spacing: 10) {
+                        LogRow(
+                            content: LogRowContent(entry: entry, viewerID: viewerID),
+                            onOpenAuthor: isYours ? nil : { profileUserID = entry.author.id }
+                        )
+                        LogSocialBar(
+                            entry: social.current(entry),
+                            isYours: isYours,
+                            isKudosBusy: social.kudosInFlight.contains(entry.id),
+                            onKudos: { Task { await model.toggleKudos(on: entry) } },
+                            onComments: { commentsEntry = EntryLink(entry: entry) }
+                        )
+                    }
+                    .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 10, trailing: 20))
+                    .modifier(OwnLogSwipeActions(
+                        target: entry.author.id == viewerID ? LogTarget(entry: entry, localLogs: localLogs) : nil,
+                        state: $logActions
+                    ))
+                    .task {
+                        // The last visible row, since the last loaded entry may be hidden above.
+                        if entry.id == visibleEntries.last?.id {
+                            await model.loadMore()
                         }
+                    }
                 }
                 if model.isLoadingMore || (!model.hasLoaded && model.entries.isEmpty) {
                     ProgressView(model.hasLoaded ? "Loading more activity" : "Loading feed")
