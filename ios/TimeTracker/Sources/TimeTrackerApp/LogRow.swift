@@ -96,6 +96,19 @@ struct LogRow: View {
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // The category's color marks the title, so the name isn't repeated in its own line.
+                if !content.categories.isEmpty {
+                    HStack(spacing: 3) {
+                        ForEach(content.categories, id: \.self) { series in
+                            Circle()
+                                .fill(series.color)
+                                .frame(width: 10, height: 10)
+                        }
+                    }
+                    .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
+                    .accessibilityElement()
+                    .accessibilityLabel(content.categories.map(\.name).formatted(.list(type: .and)))
+                }
                 Text(content.title)
                     .font(.headline)
                     .lineLimit(2)
@@ -111,21 +124,19 @@ struct LogRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            HStack(spacing: 12) {
-                ForEach(content.categories, id: \.self) { series in
-                    CategoryLabel(series: series)
-                }
-                Spacer(minLength: 0)
-                if content.author == nil {
-                    timeText
-                }
-                if isYours {
+            // Other people's logs have nothing to show here, so the line is left out.
+            if isYours {
+                HStack(spacing: 12) {
+                    Spacer(minLength: 0)
+                    if content.author == nil {
+                        timeText
+                    }
                     Image(systemName: content.visibility.symbol)
                         .foregroundStyle(.secondary)
                         .accessibilityLabel(content.visibility.label)
                 }
+                .font(.caption)
             }
-            .font(.caption)
 
             if let syncStatus = content.syncStatus {
                 StatusBanner(kind: .pending, message: syncStatus)
