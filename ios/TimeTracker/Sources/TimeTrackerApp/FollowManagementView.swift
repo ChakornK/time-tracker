@@ -5,6 +5,7 @@ import SwiftUI
 final class FollowManagementModel {
     private let api: TrackerAPIClient
     private let token: String
+    private let onFollowsChanged: () -> Void
     private(set) var results: [SocialUser] = []
     private(set) var following: [FollowingUser] = []
     private(set) var isSearching = false
@@ -14,9 +15,10 @@ final class FollowManagementModel {
     private(set) var errorMessage: String?
     var username = ""
 
-    init(api: TrackerAPIClient, token: String) {
+    init(api: TrackerAPIClient, token: String, onFollowsChanged: @escaping () -> Void) {
         self.api = api
         self.token = token
+        self.onFollowsChanged = onFollowsChanged
     }
 
     func loadFollowing() async {
@@ -57,6 +59,7 @@ final class FollowManagementModel {
             } else {
                 try await api.unfollow(userID: userID, accessToken: token)
             }
+            onFollowsChanged()
             if let index = results.firstIndex(where: { $0.id == userID }) {
                 results[index].isFollowing = shouldFollow
             }
@@ -70,8 +73,9 @@ final class FollowManagementModel {
 struct FollowManagementView: View {
     @State private var model: FollowManagementModel
 
-    init(api: TrackerAPIClient, token: String) {
-        _model = State(initialValue: FollowManagementModel(api: api, token: token))
+    /// - Parameter onFollowsChanged: Runs after a follow or unfollow, so the feed can reload.
+    init(api: TrackerAPIClient, token: String, onFollowsChanged: @escaping () -> Void) {
+        _model = State(initialValue: FollowManagementModel(api: api, token: token, onFollowsChanged: onFollowsChanged))
     }
 
     var body: some View {

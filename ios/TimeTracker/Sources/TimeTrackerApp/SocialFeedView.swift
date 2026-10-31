@@ -13,6 +13,11 @@ final class SocialFeedModel {
     private(set) var errorMessage: String?
     private var isRefreshingNewest = false
     private var needsNewestRefresh = false
+    /// A full reload asked for while a load was running, replayed once it finishes.
+    private var needsReload = false
+    /// Counts first-page loads, so a newest-refresh or next page fetched before one is dropped
+    /// instead of mixing the old feed back into the new one.
+    private var loadGeneration = 0
 
     init(api: TrackerAPIClient, token: String) {
         self.api = api
@@ -28,6 +33,8 @@ final class SocialFeedModel {
         isLoading = true
         // This load already includes anything that synced before it, so only later requests replay.
         needsNewestRefresh = false
+        needsReload = false
+        loadGeneration += 1
         errorMessage = nil
         do {
             let page = try await api.feedPage(accessToken: token)
@@ -38,9 +45,21 @@ final class SocialFeedModel {
         }
         isLoading = false
         hasLoaded = true
-        if needsNewestRefresh {
+        if needsReload {
+            await loadFirstPage()
+        } else if needsNewestRefresh {
             await refreshNewest()
         }
+    }
+
+    /// Replaces everything loaded, for when whose logs belong in the feed changes, such as after a
+    /// follow: a followed person's older logs belong further down, so they can't just be prepended.
+    func reload() async {
+        guard !isLoading else {
+            needsReload = true
+            return
+        }
+        await loadFirstPage()
     }
 
     /// Adds logs newer than the ones already shown, keeping everything loaded so far so the list
@@ -56,8 +75,10 @@ final class SocialFeedModel {
         defer { isRefreshingNewest = false }
         repeat {
             needsNewestRefresh = false
+            let generation = loadGeneration
             do {
                 let page = try await api.feedPage(accessToken: token)
+                guard generation == loadGeneration else { return }
                 let known = Set(entries.map(\.id))
                 if page.nextCursor != nil && !page.items.contains(where: { known.contains($0.id) }) {
                     // More than a page arrived since the last load, so there would be a gap below it.
@@ -88,8 +109,10 @@ final class SocialFeedModel {
         guard !isLoadingMore, let nextCursor else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
+        let generation = loadGeneration
         do {
             let page = try await api.feedPage(accessToken: token, cursor: nextCursor)
+            guard generation == loadGeneration else { return }
             var seen = Set(entries.map(\.id))
             entries.append(contentsOf: page.items.filter { seen.insert($0.id).inserted })
             self.nextCursor = page.nextCursor
@@ -166,7 +189,7 @@ struct SocialFeedView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
-                        FollowManagementView(api: api, token: token)
+                        FollowManagementView(api: api, token: token) { Task { await model.reload() } }
                     } label: {
                         Label("People", systemImage: "person.2")
                     }
@@ -199,7 +222,7 @@ struct SocialFeedView: View {
                         Text("Time you log appears here, along with activity from people you follow.")
                     } actions: {
                         NavigationLink {
-                            FollowManagementView(api: api, token: token)
+                            FollowManagementView(api: api, token: token) { Task { await model.reload() } }
                         } label: {
                             Text("Find people")
                                 .frame(minWidth: 120, minHeight: 44)
