@@ -176,7 +176,6 @@ struct ProfileAndCategoriesView: View {
     @State private var goalSheet: GoalSheet?
     @State private var renamingCategory: APICategory?
     @State private var renameText = ""
-    @State private var deletingCategory: APICategory?
     @State private var logActions = LogActionState()
     private let changeLog: LogChanger
 
@@ -257,6 +256,8 @@ struct ProfileAndCategoriesView: View {
         }
         // Logs on this device change outside `withAnimation`, such as one deleted from My logs.
         .animation(.snappy, value: localLogs.map(\.id))
+        // Deleted categories leave without List's destructive-action animation, so animate them here.
+        .animation(.snappy, value: model.categories.categories.map(\.id))
         .navigationTitle("Profile")
         .task { await model.load() }
         .logActionPresentations(state: $logActions, categories: model.categories.categories, change: changeLog)
@@ -267,18 +268,6 @@ struct ProfileAndCategoriesView: View {
             Button("Save") {
                 Task { await model.rename(category, to: renameText) }
             }
-        }
-        .confirmationDialog(
-            deletingCategory.map { "Delete \($0.name)?" } ?? "",
-            isPresented: isConfirmingDeletion,
-            titleVisibility: .visible,
-            presenting: deletingCategory
-        ) { category in
-            Button("Delete category", role: .destructive) {
-                Task { await model.delete(category) }
-            }
-        } message: { _ in
-            Text("Its goals are deleted too. Logged time is kept but no longer belongs to a category.")
         }
         .sheet(item: $goalSheet) { sheet in
             switch sheet {
@@ -376,24 +365,12 @@ struct ProfileAndCategoriesView: View {
                     )
                 } else {
                     ForEach(model.categories.categories) { category in
-                        CategoryLabel(category: category)
-                        .swipeActions {
-                            Button("Delete", systemImage: "trash", role: .destructive) {
-                                requestDeletion(of: category)
-                            }
-                            Button("Rename", systemImage: "pencil") {
-                                beginRenaming(category)
-                            }
-                            .tint(.gray)
-                        }
-                        .contextMenu {
-                            Button("Rename", systemImage: "pencil") {
-                                beginRenaming(category)
-                            }
-                            Button("Delete", systemImage: "trash", role: .destructive) {
-                                requestDeletion(of: category)
-                            }
-                        }
+                        CategoryRow(
+                            category: category,
+                            canDelete: { model.canDelete(category) },
+                            rename: { beginRenaming(category) },
+                            delete: { Task { await model.delete(category) } }
+                        )
                     }
                 }
                 HStack(spacing: 12) {
@@ -457,18 +434,55 @@ struct ProfileAndCategoriesView: View {
         Binding(get: { renamingCategory != nil }, set: { if !$0 { renamingCategory = nil } })
     }
 
-    private var isConfirmingDeletion: Binding<Bool> {
-        Binding(get: { deletingCategory != nil }, set: { if !$0 { deletingCategory = nil } })
-    }
-
     private func beginRenaming(_ category: APICategory) {
         renameText = category.name
         renamingCategory = category
     }
+}
 
-    private func requestDeletion(of category: APICategory) {
-        if model.canDelete(category) {
-            deletingCategory = category
+/// A category with Rename and Delete, whose delete confirmation is attached to the row so its
+/// popover points at the category rather than at the top of the screen.
+private struct CategoryRow: View {
+    let category: APICategory
+    let canDelete: () -> Bool
+    let rename: () -> Void
+    let delete: () -> Void
+    @State private var isConfirmingDeletion = false
+
+    var body: some View {
+        CategoryLabel(category: category)
+            .swipeActions {
+                // Not `role: .destructive`: List animates a destructive action's row away as if it
+                // were deleted, which takes the row's dialog with it before it can be answered.
+                Button("Delete", systemImage: "trash") {
+                    requestDeletion()
+                }
+                .tint(.red)
+                Button("Rename", systemImage: "pencil") {
+                    rename()
+                }
+                .tint(.gray)
+            }
+            .contextMenu {
+                Button("Rename", systemImage: "pencil") {
+                    rename()
+                }
+                Button("Delete", systemImage: "trash", role: .destructive) {
+                    requestDeletion()
+                }
+            }
+            .confirmationDialog("Delete \(category.name)?", isPresented: $isConfirmingDeletion, titleVisibility: .visible) {
+                Button("Delete category", role: .destructive) {
+                    delete()
+                }
+            } message: {
+                Text("Its goals are deleted too. Logged time is kept but no longer belongs to a category.")
+            }
+    }
+
+    private func requestDeletion() {
+        if canDelete() {
+            isConfirmingDeletion = true
         }
     }
 }
