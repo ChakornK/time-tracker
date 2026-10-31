@@ -303,7 +303,7 @@ struct APIClientTests {
     @Test func searchesUsersWithAuthorizationAndEncodedUsername() async throws {
         let userID = UUID()
         let body = Data("""
-        {"users":[{"id":"\(userID)","username":"a+b_writer","displayName":"Writer","isFollowing":false}]}
+        {"users":[{"id":"\(userID)","username":"a+b_writer","displayName":"Writer","isPrivate":true,"isFollowing":false,"isRequested":true}]}
         """.utf8)
         let session = stubbedSession { request in
             let url = try #require(request.url)
@@ -317,7 +317,7 @@ struct APIClientTests {
 
         let users = try await client.searchUsers(username: " a+b ", accessToken: "access-token")
 
-        #expect(users == [SocialUser(id: userID, username: "a+b_writer", displayName: "Writer", isFollowing: false)])
+        #expect(users == [SocialUser(id: userID, username: "a+b_writer", displayName: "Writer", isPrivate: true, isFollowing: false, isRequested: true)])
     }
 
     @Test func followingDecodesProtectedList() async throws {
@@ -351,7 +351,7 @@ struct APIClientTests {
                 let requestBody = try #require(requestBodyData(request))
                 let payload = try #require(JSONSerialization.jsonObject(with: requestBody) as? [String: String])
                 #expect(payload["userId"]?.lowercased() == userID.uuidString.lowercased())
-                return response(body: Data(), statusCode: 204)
+                return response(body: Data(#"{"status":"requested"}"#.utf8), statusCode: 200)
             }
             #expect(request.url?.path == "/api/v1/follows/\(userID.uuidString)")
             #expect(request.httpMethod == "DELETE")
@@ -359,7 +359,7 @@ struct APIClientTests {
         }
         let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
 
-        try await client.follow(userID: userID, accessToken: "access-token")
+        #expect(try await client.follow(userID: userID, accessToken: "access-token") == .requested)
         try await client.unfollow(userID: userID, accessToken: "access-token")
         #expect(requestCapture.value == 2)
     }
@@ -426,16 +426,117 @@ struct APIClientTests {
         }
     }
 
-    @Test func followMapsSelfFollowErrorFromNoContentEndpoint() async throws {
+    @Test func followSurfacesSelfFollowError() async throws {
         let body = Data(#"{"error":{"code":"SELF_FOLLOW_NOT_ALLOWED","message":"An account cannot follow itself"}}"#.utf8)
         let client = TrackerAPIClient(
             baseURL: URL(string: "https://tracker.example.test")!,
             session: stubbedSession { _ in response(body: body, statusCode: 400) }
         )
 
-        await #expect(throws: SocialClientError.followConflict) {
+        await #expect(throws: APIClientError.server(statusCode: 400, code: "SELF_FOLLOW_NOT_ALLOWED")) {
             try await client.follow(userID: UUID(), accessToken: "access-token")
         }
+    }
+
+    // The bodies below are copied from what the server sends, so a shape mismatch fails here.
+
+    @Test func decodesFollowersAndRequests() async throws {
+        let userID = UUID()
+        let session = stubbedSession { request in
+            if request.url?.path == "/api/v1/followers" {
+                return response(body: Data("""
+                {"followers":[{"id":"\(userID)","username":"writer","displayName":"Writer","avatarUrl":null,"followedAt":"2026-02-08T12:00:00.123Z","isFollowing":true,"isRequested":false}]}
+                """.utf8), statusCode: 200)
+            }
+            #expect(request.url?.path == "/api/v1/follow-requests")
+            return response(body: Data("""
+            {"requests":[{"id":"\(userID)","username":"writer","displayName":"Writer","avatarUrl":null,"requestedAt":"2026-02-08T12:00:00.123Z"}]}
+            """.utf8), statusCode: 200)
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+
+        let followers = try await client.followers(accessToken: "access-token")
+        #expect(followers.map(\.id) == [userID])
+        #expect(followers[0].isFollowing)
+        let requests = try await client.followRequests(accessToken: "access-token")
+        #expect(requests.map(\.username) == ["writer"])
+    }
+
+    @Test func decodesProfileAndPrivacy() async throws {
+        let userID = UUID()
+        let session = stubbedSession { request in
+            if request.httpMethod == "PUT" {
+                #expect(request.url?.path == "/api/v1/me/privacy")
+                let body = try #require(requestBodyData(request))
+                #expect(String(decoding: body, as: UTF8.self) == #"{"isPrivate":true}"#)
+                return response(body: Data(#"{"isPrivate":true,"followerCount":2,"followingCount":1,"pendingRequestCount":3}"#.utf8), statusCode: 200)
+            }
+            #expect(request.url?.path == "/api/v1/users/\(userID.uuidString)")
+            return response(body: Data("""
+            {"user":{"id":"\(userID)","username":"writer","displayName":"Writer","avatarUrl":null,"isPrivate":true,"followerCount":4,"followingCount":5,"relationship":{"isFollowing":false,"isRequested":true,"followsYou":true},"canViewLogs":false}}
+            """.utf8), statusCode: 200)
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+
+        let summary = try await client.setPrivateAccount(true, accessToken: "access-token")
+        #expect(summary.pendingRequestCount == 3)
+        let profile = try await client.userProfile(id: userID, accessToken: "access-token")
+        #expect(profile.relationship.isRequested)
+        #expect(!profile.canViewLogs)
+        #expect(profile.followerCount == 4)
+    }
+
+    @Test func feedEntriesCarryKudosAndComments() async throws {
+        let entry = """
+        "title":"Reading","notes":null,"startedAt":"2026-02-01T10:00:00.000Z","endedAt":"2026-02-01T10:20:00.000Z","durationSeconds":1200,"visibility":"public","createdAt":"2026-02-01T10:20:01.000Z","author":{"id":"\(UUID())","username":"writer","displayName":"Writer","avatarUrl":null},"categories":[]
+        """
+        let body = Data("""
+        {"items":[{"id":"\(UUID())",\(entry),"kudosCount":2,"viewerGaveKudos":true,"commentCount":1},{"id":"\(UUID())",\(entry)}],"nextCursor":null}
+        """.utf8)
+        let client = TrackerAPIClient(
+            baseURL: URL(string: "https://tracker.example.test")!,
+            session: stubbedSession { _ in response(body: body, statusCode: 200) }
+        )
+
+        let page = try await client.feedPage(accessToken: "access-token")
+        #expect(page.items[0].kudosCount == 2)
+        #expect(page.items[0].viewerGaveKudos)
+        #expect(page.items[0].commentCount == 1)
+        // An entry from a server without kudos decodes with none.
+        #expect(page.items[1].kudosCount == 0)
+        #expect(!page.items[1].viewerGaveKudos)
+    }
+
+    @Test func kudosAndComments() async throws {
+        let logID = UUID()
+        let commentID = UUID()
+        let comment = """
+        {"id":"\(commentID)","body":"Nice","createdAt":"2026-02-01T10:21:00.000Z","author":{"id":"\(UUID())","username":"fan","displayName":"Fan"},"canDelete":true}
+        """
+        let session = stubbedSession { request in
+            switch (request.httpMethod, request.url?.path) {
+            case ("POST", "/api/v1/logs/\(logID.uuidString)/kudos"):
+                return response(body: Data(#"{"kudosCount":1,"viewerGaveKudos":true}"#.utf8), statusCode: 200)
+            case ("GET", "/api/v1/logs/\(logID.uuidString)/comments"):
+                return response(body: Data(#"{"comments":[\#(comment)],"nextCursor":null}"#.utf8), statusCode: 200)
+            case ("POST", "/api/v1/logs/\(logID.uuidString)/comments"):
+                let body = try #require(requestBodyData(request))
+                #expect(String(decoding: body, as: UTF8.self) == #"{"body":"Nice"}"#)
+                return response(body: Data(#"{"comment":\#(comment)}"#.utf8), statusCode: 201)
+            default:
+                #expect(request.httpMethod == "DELETE")
+                #expect(request.url?.path == "/api/v1/comments/\(commentID.uuidString)")
+                return response(body: Data(), statusCode: 204)
+            }
+        }
+        let client = TrackerAPIClient(baseURL: URL(string: "https://tracker.example.test")!, session: session)
+
+        #expect(try await client.giveKudos(logID: logID, accessToken: "access-token") == KudosState(kudosCount: 1, viewerGaveKudos: true))
+        let page = try await client.comments(logID: logID, accessToken: "access-token")
+        #expect(page.comments.map(\.body) == ["Nice"])
+        let added = try await client.addComment("Nice", logID: logID, accessToken: "access-token")
+        #expect(added.id == commentID)
+        try await client.deleteComment(id: commentID, accessToken: "access-token")
     }
 
     @Test func decodesTimestampsWithMilliseconds() async throws {

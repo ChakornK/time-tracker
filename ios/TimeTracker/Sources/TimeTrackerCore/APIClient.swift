@@ -77,6 +77,7 @@ public struct TrackerAPIClient: Sendable {
     private enum Method: String {
         case get = "GET"
         case post = "POST"
+        case put = "PUT"
         case patch = "PATCH"
         case delete = "DELETE"
     }
@@ -243,17 +244,87 @@ public struct TrackerAPIClient: Sendable {
         return envelope.following
     }
 
-    public func follow(userID: UUID, accessToken: String) async throws {
+    @discardableResult
+    public func follow(userID: UUID, accessToken: String) async throws -> FollowStatus {
         let request = try makeRequest(.post, "follows", body: FollowPayload(userId: userID), token: accessToken)
-        do {
-            _ = try await perform(request)
-        } catch APIClientError.server(_, "SELF_FOLLOW_NOT_ALLOWED") {
-            throw SocialClientError.followConflict
-        }
+        let response: FollowResponse = try await send(request)
+        return response.status
     }
 
+    /// Also withdraws a follow request that hasn't been answered.
     public func unfollow(userID: UUID, accessToken: String) async throws {
         _ = try await perform(makeRequest(.delete, "follows/\(userID.uuidString)", token: accessToken))
+    }
+
+    public func followers(accessToken: String) async throws -> [FollowerUser] {
+        let envelope: FollowersEnvelope = try await send(makeRequest(.get, "followers", token: accessToken))
+        return envelope.followers
+    }
+
+    public func removeFollower(userID: UUID, accessToken: String) async throws {
+        _ = try await perform(makeRequest(.delete, "followers/\(userID.uuidString)", token: accessToken))
+    }
+
+    public func followRequests(accessToken: String) async throws -> [FollowRequest] {
+        let envelope: FollowRequestsEnvelope = try await send(makeRequest(.get, "follow-requests", token: accessToken))
+        return envelope.requests
+    }
+
+    public func acceptFollowRequest(from userID: UUID, accessToken: String) async throws {
+        _ = try await perform(makeRequest(.post, "follow-requests/\(userID.uuidString)/accept", token: accessToken))
+    }
+
+    public func declineFollowRequest(from userID: UUID, accessToken: String) async throws {
+        _ = try await perform(makeRequest(.delete, "follow-requests/\(userID.uuidString)", token: accessToken))
+    }
+
+    public func socialSummary(accessToken: String) async throws -> SocialSummary {
+        try await send(makeRequest(.get, "me/social", token: accessToken))
+    }
+
+    public func setPrivateAccount(_ isPrivate: Bool, accessToken: String) async throws -> SocialSummary {
+        try await send(makeRequest(.put, "me/privacy", body: PrivacyPayload(isPrivate: isPrivate), token: accessToken))
+    }
+
+    public func userProfile(id: UUID, accessToken: String) async throws -> UserProfile {
+        let envelope: UserProfileEnvelope = try await send(makeRequest(.get, "users/\(id.uuidString)", token: accessToken))
+        return envelope.user
+    }
+
+    /// A person's logs that you can see, newest first.
+    public func userLogs(id: UUID, accessToken: String, cursor: String? = nil, limit: Int = 20) async throws -> FeedPage {
+        try await send(makeRequest(.get, "users/\(id.uuidString)/logs", query: pageQuery(cursor: cursor, limit: limit), token: accessToken))
+    }
+
+    public func giveKudos(logID: UUID, accessToken: String) async throws -> KudosState {
+        try await send(makeRequest(.post, "logs/\(logID.uuidString)/kudos", token: accessToken))
+    }
+
+    public func removeKudos(logID: UUID, accessToken: String) async throws -> KudosState {
+        try await send(makeRequest(.delete, "logs/\(logID.uuidString)/kudos", token: accessToken))
+    }
+
+    /// Oldest first.
+    public func comments(logID: UUID, accessToken: String, cursor: String? = nil, limit: Int = 50) async throws -> CommentPage {
+        try await send(makeRequest(.get, "logs/\(logID.uuidString)/comments", query: pageQuery(cursor: cursor, limit: limit), token: accessToken))
+    }
+
+    public func addComment(_ body: String, logID: UUID, accessToken: String) async throws -> LogComment {
+        let request = try makeRequest(.post, "logs/\(logID.uuidString)/comments", body: CommentPayload(body: body), token: accessToken)
+        let envelope: CommentEnvelope = try await send(request)
+        return envelope.comment
+    }
+
+    public func deleteComment(id: UUID, accessToken: String) async throws {
+        _ = try await perform(makeRequest(.delete, "comments/\(id.uuidString)", token: accessToken))
+    }
+
+    private func pageQuery(cursor: String?, limit: Int) -> [String: String] {
+        var query = ["limit": String(limit)]
+        if let cursor, !cursor.isEmpty {
+            query["cursor"] = cursor
+        }
+        return query
     }
 
     public func feedPage(accessToken: String, cursor: String? = nil, limit: Int = 20) async throws -> FeedPage {
