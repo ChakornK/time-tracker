@@ -11,6 +11,42 @@ export const feedQuerySchema = z.object({
 
 export type FeedQuery = z.infer<typeof feedQuerySchema>;
 
+export const userParamsSchema = z.object({
+  userId: z.uuid(),
+});
+
+export const idParamsSchema = z.object({
+  id: z.uuid(),
+});
+
+export const privacySchema = z.object({
+  isPrivate: z.boolean(),
+});
+
+export const commentBodySchema = z.object({
+  body: z.string().trim().min(1).max(500),
+});
+
+export type FollowStatus = "following" | "requested";
+
+export interface CommentResponse {
+  id: string;
+  body: string;
+  createdAt: Date;
+  author: {
+    id: string;
+    username: string;
+    displayName: string;
+  };
+  /** The commenter and the log's author can delete a comment. */
+  canDelete: boolean;
+}
+
+export interface CommentPage {
+  comments: CommentResponse[];
+  nextCursor: string | null;
+}
+
 export interface FeedEntry {
   id: string;
   title: string;
@@ -33,6 +69,9 @@ export interface FeedEntry {
     name: string;
     colorHex: string;
   }>;
+  kudosCount: number;
+  viewerGaveKudos: boolean;
+  commentCount: number;
 }
 
 export interface FeedPage {

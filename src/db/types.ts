@@ -9,6 +9,7 @@ export interface UsersTable {
   email: string;
   password_hash: string;
   avatar_url: string | null;
+  is_private: Generated<boolean>;
   created_at: Generated<Timestamp>;
 }
 
@@ -44,6 +45,27 @@ export interface FollowsTable {
   created_at: Generated<Timestamp>;
 }
 
+/** A follow of a private account that its owner hasn't accepted yet. */
+export interface FollowRequestsTable {
+  requester_id: string;
+  target_id: string;
+  created_at: Generated<Timestamp>;
+}
+
+export interface KudosTable {
+  log_id: string;
+  user_id: string;
+  created_at: Generated<Timestamp>;
+}
+
+export interface CommentsTable {
+  id: Generated<string>;
+  log_id: string;
+  user_id: string;
+  body: string;
+  created_at: Generated<Timestamp>;
+}
+
 export interface GoalsTable {
   id: Generated<string>;
   user_id: string;
@@ -59,5 +81,8 @@ export interface DatabaseSchema {
   logs: LogsTable;
   log_categories: LogCategoriesTable;
   follows: FollowsTable;
+  follow_requests: FollowRequestsTable;
+  kudos: KudosTable;
+  comments: CommentsTable;
   goals: GoalsTable;
 }

@@ -2,11 +2,18 @@ import type { Database } from "../db/client.js";
 import type { FeedEntry, FeedQuery } from "./schemas.js";
 import { decodeCursor } from "./service.js";
 import { toDate } from "../db/utils.js";
+import { visibleOutsideFeed } from "./visible-logs.js";
 
+/**
+ * A page of logs, newest first. Without `authorId` it is the viewer's feed: their own logs and
+ * those of people they follow. With it, it is that author's logs as seen on their profile, which
+ * also shows a public account's public logs to people who don't follow it.
+ */
 export async function getFeedFromDatabase(
   db: Database,
   userId: string,
   query: FeedQuery,
+  authorId?: string,
 ): Promise<{ rows: FeedEntry[]; hasMore: boolean }> {
   const cursor = query.cursor ? decodeCursor(query.cursor) : undefined;
   let feedQuery = db
@@ -20,17 +27,19 @@ export async function getFeedFromDatabase(
       join.onRef("author_follow.follower_id", "=", "logs.user_id")
         .on("author_follow.following_id", "=", userId),
     )
-    .where((expression) => expression.or([
-      expression("logs.user_id", "=", userId),
-      expression.and([
-        expression("logs.visibility", "=", "public"),
-        expression("viewer_follow.follower_id", "=", userId),
-      ]),
-      expression.and([
-        expression("logs.visibility", "=", "friends_only"),
-        expression("author_follow.following_id", "=", userId),
-      ]),
-    ]));
+    .where((expression) => authorId
+      ? expression.and([expression("logs.user_id", "=", authorId), visibleOutsideFeed(userId)])
+      : expression.or([
+          expression("logs.user_id", "=", userId),
+          expression.and([
+            expression("logs.visibility", "=", "public"),
+            expression("viewer_follow.follower_id", "=", userId),
+          ]),
+          expression.and([
+            expression("logs.visibility", "=", "friends_only"),
+            expression("author_follow.following_id", "=", userId),
+          ]),
+        ]));
 
   if (cursor) {
     // Kysely types `created_at` through the nullable joins in a way that rejects a plain Date operand.
@@ -82,6 +91,29 @@ export async function getFeedFromDatabase(
         .where("log_categories.log_id", "in", logIDs)
         .execute();
 
+  const kudosRows = logIDs.length === 0
+    ? []
+    : await db
+        .selectFrom("kudos")
+        .select((expression) => [
+          "kudos.log_id",
+          expression.fn.countAll<string>().as("count"),
+          expression.fn.countAll<string>().filterWhere("kudos.user_id", "=", userId).as("mine"),
+        ])
+        .where("kudos.log_id", "in", logIDs)
+        .groupBy("kudos.log_id")
+        .execute();
+  const commentRows = logIDs.length === 0
+    ? []
+    : await db
+        .selectFrom("comments")
+        .select((expression) => ["comments.log_id", expression.fn.countAll<string>().as("count")])
+        .where("comments.log_id", "in", logIDs)
+        .groupBy("comments.log_id")
+        .execute();
+  const kudosByLog = new Map(kudosRows.map((row) => [row.log_id, row]));
+  const commentCountByLog = new Map(commentRows.map((row) => [row.log_id, Number(row.count)]));
+
   const categoriesByLog = new Map<string, FeedEntry["categories"]>();
   for (const category of categoryRows) {
     const existing = categoriesByLog.get(category.log_id) ?? [];
@@ -107,6 +139,9 @@ export async function getFeedFromDatabase(
         avatarUrl: row.author_avatar_url,
       },
       categories: categoriesByLog.get(row.id) ?? [],
+      kudosCount: Number(kudosByLog.get(row.id)?.count ?? 0),
+      viewerGaveKudos: Number(kudosByLog.get(row.id)?.mine ?? 0) > 0,
+      commentCount: commentCountByLog.get(row.id) ?? 0,
     })),
     hasMore,
   };

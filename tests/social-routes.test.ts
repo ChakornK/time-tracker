@@ -57,7 +57,8 @@ test("follow rules filter feed visibility and paginate without duplicates", asyn
     headers: { authorization: `Bearer ${viewer.token}` },
     payload: { userId: author.id },
   });
-  assert.equal(follow.statusCode, 204);
+  assert.equal(follow.statusCode, 200);
+  assert.deepEqual(follow.json(), { status: "following" });
 
   const followedSearch = await app.inject({
     method: "GET",
@@ -87,7 +88,7 @@ test("follow rules filter feed visibility and paginate without duplicates", asyn
     headers: { authorization: `Bearer ${author.token}` },
     payload: { userId: viewer.id },
   });
-  assert.equal(followBack.statusCode, 204);
+  assert.equal(followBack.statusCode, 200);
 
   const viewerFeed = await app.inject({
     method: "GET",
