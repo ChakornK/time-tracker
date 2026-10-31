@@ -72,6 +72,8 @@ test("follow rules filter feed visibility and paginate without duplicates", asyn
     headers: { authorization: `Bearer ${viewer.token}` },
   });
   assert.deepEqual(following.json().following.map((user: { id: string }) => user.id), [author.id]);
+  // The app decodes these keys as they are, so they must be camelCase.
+  assert.deepEqual(Object.keys(following.json().following[0]).sort(), ["avatarUrl", "displayName", "followedAt", "id", "username"]);
 
   const privateSelf = await createLog(app, author.token, "private-self", "private");
   const publicLog = await createLog(app, author.token, "public-followed", "public");

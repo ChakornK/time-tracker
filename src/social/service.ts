@@ -2,6 +2,7 @@ import type { Database } from "../db/client.js";
 import { DomainError } from "../errors.js";
 import type { FeedCursor, FeedPage, FeedQuery } from "./schemas.js";
 import { getFeedFromDatabase } from "./feed-query.js";
+import { toDate } from "../db/utils.js";
 
 export class FollowTargetNotFoundError extends DomainError {
   constructor() {
@@ -44,7 +45,7 @@ export class SocialService {
   }
 
   async listFollowing(userId: string) {
-    return this.db
+    const rows = await this.db
       .selectFrom("follows")
       .innerJoin("users", "users.id", "follows.following_id")
       .select([
@@ -57,6 +58,14 @@ export class SocialService {
       .where("follows.follower_id", "=", userId)
       .orderBy("users.username", "asc")
       .execute();
+
+    return rows.map((row) => ({
+      id: row.id,
+      username: row.username,
+      displayName: row.display_name,
+      avatarUrl: row.avatar_url,
+      followedAt: toDate(row.followed_at),
+    }));
   }
 
   async searchUsers(userId: string, username: string) {
