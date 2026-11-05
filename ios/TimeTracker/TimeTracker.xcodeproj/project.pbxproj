@@ -10,6 +10,7 @@
 		A10000000000000000000001 /* Sources/TimeTrackerApp/TimeTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* Sources/TimeTrackerApp/TimeTrackerApp.swift */; };
 		A10000000000000000000002 /* Sources/TimeTrackerCore/TimerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* Sources/TimeTrackerCore/TimerEngine.swift */; };
 		A10000000000000000000003 /* Sources/TimeTrackerCore/TimerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* Sources/TimeTrackerCore/TimerModels.swift */; };
+		A100000000000000000000F4 /* Sources/TimeTrackerCore/OverallAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000000000000F4 /* Sources/TimeTrackerCore/OverallAnalytics.swift */; };
 		A10000000000000000000004 /* Sources/TimeTrackerCore/TimerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* Sources/TimeTrackerCore/TimerStore.swift */; };
 		A10000000000000000000005 /* Sources/TimeTrackerCore/APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* Sources/TimeTrackerCore/APIClient.swift */; };
 		A10000000000000000000006 /* Sources/TimeTrackerCore/TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* Sources/TimeTrackerCore/TokenStore.swift */; };
@@ -55,6 +56,7 @@
 		A10000000000000000000061 /* Sources/TimeTrackerApp/CategoryBarChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000061 /* Sources/TimeTrackerApp/CategoryBarChartCard.swift */; };
 		A10000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift */; };
 		A10000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift */; };
+		A100000000000000000000F3 /* Sources/TimeTrackerApp/OverallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000000000000F3 /* Sources/TimeTrackerApp/OverallView.swift */; };
 		A10000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift */; };
 		A10000000000000000000065 /* Sources/TimeTrackerCore/GoalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000065 /* Sources/TimeTrackerCore/GoalModels.swift */; };
 		A10000000000000000000066 /* Sources/TimeTrackerCore/GoalProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000066 /* Sources/TimeTrackerCore/GoalProgress.swift */; };
@@ -114,6 +116,7 @@
 		B20000000000000000000001 /* Sources/TimeTrackerApp/TimeTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/TimeTrackerApp.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000002 /* Sources/TimeTrackerCore/TimerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/TimerEngine.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000003 /* Sources/TimeTrackerCore/TimerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/TimerModels.swift; sourceTree = SOURCE_ROOT; };
+		B200000000000000000000F4 /* Sources/TimeTrackerCore/OverallAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/OverallAnalytics.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000004 /* Sources/TimeTrackerCore/TimerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/TimerStore.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000005 /* Sources/TimeTrackerCore/APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/APIClient.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000006 /* Sources/TimeTrackerCore/TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/TokenStore.swift; sourceTree = SOURCE_ROOT; };
@@ -153,6 +156,7 @@
 		B20000000000000000000061 /* Sources/TimeTrackerApp/CategoryBarChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/CategoryBarChartCard.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/TrackedTimePieCard.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/AnalyticsView.swift; sourceTree = SOURCE_ROOT; };
+		B200000000000000000000F3 /* Sources/TimeTrackerApp/OverallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/OverallView.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000064 /* Sources/TimeTrackerApp/ManualLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerApp/ManualLogSheet.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000065 /* Sources/TimeTrackerCore/GoalModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/GoalModels.swift; sourceTree = SOURCE_ROOT; };
 		B20000000000000000000066 /* Sources/TimeTrackerCore/GoalProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/TimeTrackerCore/GoalProgress.swift; sourceTree = SOURCE_ROOT; };
@@ -204,6 +208,7 @@
 				B20000000000000000000002 /* Sources/TimeTrackerCore/TimerEngine.swift */,
 				B20000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift */,
 				B20000000000000000000003 /* Sources/TimeTrackerCore/TimerModels.swift */,
+				B200000000000000000000F4 /* Sources/TimeTrackerCore/OverallAnalytics.swift */,
 				B20000000000000000000004 /* Sources/TimeTrackerCore/TimerStore.swift */,
 				B20000000000000000000005 /* Sources/TimeTrackerCore/APIClient.swift */,
 				B20000000000000000000006 /* Sources/TimeTrackerCore/TokenStore.swift */,
@@ -234,6 +239,7 @@
 				B20000000000000000000072 /* Sources/TimeTrackerApp/CategoryColors.swift */,
 				B20000000000000000000071 /* Sources/TimeTrackerApp/LogRow.swift */,
 				B20000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift */,
+				B200000000000000000000F3 /* Sources/TimeTrackerApp/OverallView.swift */,
 				B20000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift */,
 				B20000000000000000000061 /* Sources/TimeTrackerApp/CategoryBarChartCard.swift */,
 				B20000000000000000000060 /* Sources/TimeTrackerApp/ChartPalette.swift */,
@@ -370,6 +376,7 @@
 				A10000000000000000000002 /* Sources/TimeTrackerCore/TimerEngine.swift in Sources */,
 				CCDCD77C308F222F00DCF825 /* Sources/TimeTrackerCore/DurationFormat.swift in Sources */,
 				A10000000000000000000003 /* Sources/TimeTrackerCore/TimerModels.swift in Sources */,
+				A100000000000000000000F4 /* Sources/TimeTrackerCore/OverallAnalytics.swift in Sources */,
 				A10000000000000000000004 /* Sources/TimeTrackerCore/TimerStore.swift in Sources */,
 				A10000000000000000000005 /* Sources/TimeTrackerCore/APIClient.swift in Sources */,
 				A10000000000000000000006 /* Sources/TimeTrackerCore/TokenStore.swift in Sources */,
@@ -402,6 +409,7 @@
 				A10000000000000000000072 /* Sources/TimeTrackerApp/CategoryColors.swift in Sources */,
 				A10000000000000000000071 /* Sources/TimeTrackerApp/LogRow.swift in Sources */,
 				A10000000000000000000063 /* Sources/TimeTrackerApp/AnalyticsView.swift in Sources */,
+				A100000000000000000000F3 /* Sources/TimeTrackerApp/OverallView.swift in Sources */,
 				A10000000000000000000062 /* Sources/TimeTrackerApp/TrackedTimePieCard.swift in Sources */,
 				A10000000000000000000061 /* Sources/TimeTrackerApp/CategoryBarChartCard.swift in Sources */,
 				A10000000000000000000060 /* Sources/TimeTrackerApp/ChartPalette.swift in Sources */,

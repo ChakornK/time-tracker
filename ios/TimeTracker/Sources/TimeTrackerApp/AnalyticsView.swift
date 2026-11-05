@@ -27,38 +27,48 @@ extension AnalyticsPeriod {
     }
 }
 
+/// What the Insights picker selects: one of the calendar periods, or everything logged so far.
+private enum AnalyticsScope: Hashable, Identifiable {
+    case period(AnalyticsPeriod)
+    case overall
+
+    static let all: [AnalyticsScope] = AnalyticsPeriod.allCases.map(AnalyticsScope.period) + [.overall]
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .period(let period): period.label
+        case .overall: "Overall"
+        }
+    }
+}
+
 struct AnalyticsView: View {
     let logs: [ProductivitySummaryLog]
     let categories: [APICategory]
     let goals: [APIGoal]
-    @State private var period = AnalyticsPeriod.week
+    @State private var scope = AnalyticsScope.period(.week)
 
     var body: some View {
         let colors = CategoryColorResolver(categories: categories)
-        let periodGoals = goals.filter { $0.period == period.goalPeriod }
 
         ScrollView {
             VStack(spacing: 16) {
-                Picker("Period", selection: $period) {
-                    ForEach(AnalyticsPeriod.allCases) { period in
-                        Text(period.label).tag(period)
+                Picker("Period", selection: $scope) {
+                    ForEach(AnalyticsScope.all) { scope in
+                        Text(scope.label).tag(scope)
                     }
                 }
                 .pickerStyle(.segmented)
 
                 // Re-evaluates each minute so day, week, and month boundaries roll over without new logs.
                 TimelineView(.everyMinute) { context in
-                    VStack(spacing: 16) {
-                        InsightsSummaryCard(
-                            analytics: CategoryTimeAnalytics(logs: logs, period: period, now: context.date),
-                            goalProgress: periodGoals.map { GoalProgress(goal: $0, logs: logs, now: context.date) },
-                            colors: colors
-                        )
-                        if !periodGoals.isEmpty {
-                            GoalsProgressCard(goals: periodGoals, logs: logs, colors: colors, now: context.date)
-                        }
-                        CategoryBarChartCard(logs: logs, period: period, colors: colors, now: context.date)
-                        TrackedTimePieCard(logs: logs, period: period, colors: colors, now: context.date)
+                    switch scope {
+                    case .period(let period):
+                        periodCards(period, colors: colors, now: context.date)
+                    case .overall:
+                        OverallView(logs: logs, colors: colors, now: context.date)
                     }
                 }
             }
@@ -66,6 +76,25 @@ struct AnalyticsView: View {
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Insights")
+    }
+}
+
+extension AnalyticsView {
+    @ViewBuilder
+    private func periodCards(_ period: AnalyticsPeriod, colors: CategoryColorResolver, now: Date) -> some View {
+        let periodGoals = goals.filter { $0.period == period.goalPeriod }
+        VStack(spacing: 16) {
+            InsightsSummaryCard(
+                analytics: CategoryTimeAnalytics(logs: logs, period: period, now: now),
+                goalProgress: periodGoals.map { GoalProgress(goal: $0, logs: logs, now: now) },
+                colors: colors
+            )
+            if !periodGoals.isEmpty {
+                GoalsProgressCard(goals: periodGoals, logs: logs, colors: colors, now: now)
+            }
+            CategoryBarChartCard(logs: logs, period: period, colors: colors, now: now)
+            TrackedTimePieCard(logs: logs, period: period, colors: colors, now: now)
+        }
     }
 }
 
