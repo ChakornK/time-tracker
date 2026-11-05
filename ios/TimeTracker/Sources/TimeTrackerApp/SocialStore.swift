@@ -172,6 +172,8 @@ struct LogSocialBar: View {
     let entry: FeedEntry
     let isYours: Bool
     var isKudosBusy = false
+    /// Shown at the trailing end for your own logs, so who can see a log sits with its kudos.
+    var visibility: ActivityVisibility?
     let onKudos: () -> Void
     let onComments: () -> Void
 
@@ -198,6 +200,12 @@ struct LogSocialBar: View {
             .accessibilityLabel("Comments")
             .accessibilityValue("\(entry.commentCount)")
             Spacer(minLength: 0)
+            if let visibility {
+                Image(systemName: visibility.symbol)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(visibility.label)
+            }
         }
         .font(.subheadline.monospacedDigit())
         .labelStyle(.titleAndIcon)

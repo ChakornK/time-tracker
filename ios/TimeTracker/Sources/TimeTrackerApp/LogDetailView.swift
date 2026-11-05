@@ -145,11 +145,16 @@ struct LogDetailView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 10) {
-                    LogRow(content: LogRowContent(entry: model.entry, viewerID: model.social.viewerID))
+                    LogRow(
+                        content: LogRowContent(entry: model.entry, viewerID: model.social.viewerID),
+                        notesLineLimit: nil,
+                        showsVisibility: false
+                    )
                     LogSocialBar(
                         entry: model.entry,
                         isYours: model.entry.author.id == model.social.viewerID,
                         isKudosBusy: model.social.kudosInFlight.contains(model.entry.id),
+                        visibility: model.entry.author.id == model.social.viewerID ? model.entry.visibility : nil,
                         onKudos: { Task { await model.toggleKudos() } },
                         onComments: { isComposing = true }
                     )

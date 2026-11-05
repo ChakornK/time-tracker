@@ -279,20 +279,22 @@ struct SocialFeedView: View {
                 let visibleEntries = model.entries.filter { $0.idempotencyKey.map { !unsyncedKeys.contains($0) } ?? true }
                 ForEach(visibleEntries) { entry in
                     let isYours = entry.author.id == viewerID
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 8) {
                         LogRow(
                             content: LogRowContent(entry: entry, viewerID: viewerID),
-                            onOpenAuthor: isYours ? nil : { profileUserID = entry.author.id }
+                            onOpenAuthor: isYours ? nil : { profileUserID = entry.author.id },
+                            showsVisibility: false
                         )
                         LogSocialBar(
                             entry: social.current(entry),
                             isYours: isYours,
                             isKudosBusy: social.kudosInFlight.contains(entry.id),
+                            visibility: isYours ? entry.visibility : nil,
                             onKudos: { Task { await model.toggleKudos(on: entry) } },
                             onComments: { commentsEntry = EntryLink(entry: entry) }
                         )
                     }
-                    .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 10, trailing: 20))
+                    .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 12, trailing: 20))
                     .modifier(OwnLogSwipeActions(
                         target: entry.author.id == viewerID ? LogTarget(entry: entry, localLogs: localLogs) : nil,
                         state: $logActions

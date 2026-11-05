@@ -75,11 +75,15 @@ struct LogRow: View {
     let content: LogRowContent
     /// Opens another person's profile from their name; nil leaves the name plain.
     var onOpenAuthor: (() -> Void)?
+    /// Longer notes are cut off with an ellipsis. `nil` shows them whole, as the detail screen does.
+    var notesLineLimit: Int? = 3
+    /// Shows the visibility icon on your own logs. Off where a `LogSocialBar` shows it beside the kudos.
+    var showsVisibility = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let author = content.author {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                if let author = content.author {
                     switch author {
                     case .you:
                         Text("You")
@@ -91,8 +95,18 @@ struct LogRow: View {
                             .contentShape(.rect)
                             .onTapGesture { onOpenAuthor?() }
                     }
-                    Spacer(minLength: 8)
-                    timeText
+                    Text("\u{00B7}")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
+                timeText
+                Spacer(minLength: 8)
+                if isYours && showsVisibility {
+                    Image(systemName: content.visibility.symbol)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(content.visibility.label)
                 }
             }
 
@@ -115,28 +129,15 @@ struct LogRow: View {
                     .lineLimit(2)
                 Spacer(minLength: 8)
                 DurationText(content.durationSeconds)
-                    .font(.subheadline.weight(.medium).monospacedDigit())
+                    .font(.headline.monospacedDigit())
             }
 
             if let notes = content.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(notesLineLimit)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-
-            // Other people's logs have nothing to show here, so the line is left out.
-            if isYours {
-                HStack(spacing: 12) {
-                    Spacer(minLength: 0)
-                    if content.author == nil {
-                        timeText
-                    }
-                    Image(systemName: content.visibility.symbol)
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel(content.visibility.label)
-                }
-                .font(.caption)
             }
 
             if let syncStatus = content.syncStatus {
