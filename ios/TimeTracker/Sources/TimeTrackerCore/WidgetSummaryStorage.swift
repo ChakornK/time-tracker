@@ -18,11 +18,24 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         public let title: String
         /// The category's stored `#RRGGBB` color, if it still exists.
         public let colorHex: String?
+        /// Optional so snapshots written before pausing existed still decode.
+        public var pausedAt: Date?
+        public var pausedSeconds: TimeInterval?
 
-        public init(startedAt: Date, title: String, colorHex: String?) {
+        public init(startedAt: Date, title: String, colorHex: String?, pausedAt: Date? = nil, pausedSeconds: TimeInterval? = nil) {
             self.startedAt = startedAt
             self.title = title
             self.colorHex = colorHex
+            self.pausedAt = pausedAt
+            self.pausedSeconds = pausedSeconds
+        }
+
+        public var displayStart: Date {
+            PauseClock.displayStart(startedAt: startedAt, pausedSeconds: pausedSeconds ?? 0)
+        }
+
+        func elapsed(at date: Date) -> TimeInterval {
+            PauseClock.elapsed(startedAt: startedAt, pausedSeconds: pausedSeconds ?? 0, pausedAt: pausedAt, at: date)
         }
     }
 
@@ -55,8 +68,19 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
     /// The snapshot after the running timer stops, for when it's stopped with no app UI to republish.
     public func finishingRunningTimer(at endedAt: Date) -> WidgetSnapshot {
         guard let runningTimer else { return self }
-        let finished = Interval(startedAt: runningTimer.startedAt, endedAt: max(endedAt, runningTimer.startedAt))
+        let finished = Interval(
+            startedAt: runningTimer.startedAt,
+            endedAt: runningTimer.startedAt.addingTimeInterval(runningTimer.elapsed(at: endedAt))
+        )
         return WidgetSnapshot(intervals: intervals + [finished], runningTimer: nil, updatedAt: endedAt)
+    }
+
+    /// The snapshot after the running timer is paused or resumed with no app UI to republish.
+    public func withRunningTimerPause(pausedAt: Date?, pausedSeconds: TimeInterval) -> WidgetSnapshot {
+        guard var runningTimer else { return self }
+        runningTimer.pausedAt = pausedAt
+        runningTimer.pausedSeconds = pausedSeconds
+        return WidgetSnapshot(intervals: intervals, runningTimer: runningTimer, updatedAt: updatedAt)
     }
 
     /// Today's and this week's totals as of `now`, which may be days after the snapshot was taken.

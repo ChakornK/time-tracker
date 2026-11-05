@@ -70,6 +70,9 @@ private final class EmptyTimerStore: TimerStoreProtocol {
         LocalActivityLog(userID: userID, title: "", notes: nil, startedAt: endedAt, endedAt: endedAt, categoryIDs: [], visibility: .private)
     }
 
+    func setTimerPaused(timerID: UUID, userID: UUID, paused: Bool, at date: Date) throws -> RunningTimer {
+        throw TimerStoreError.timerNotFound
+    }
     func discardTimer(timerID: UUID, userID: UUID) throws {}
     func updateLog(id: UUID, userID: UUID, edit: LogEdit) throws {}
     func deleteLog(id: UUID, userID: UUID) throws {}

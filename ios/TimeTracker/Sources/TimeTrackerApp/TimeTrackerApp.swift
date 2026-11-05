@@ -22,6 +22,9 @@ struct TimeTrackerApp: App {
         TimerIntentHandling.stop = { timerID in
             await liveActivity.stopFromActivity(timerID: timerID, store: timerStore)
         }
+        TimerIntentHandling.togglePause = { timerID in
+            await liveActivity.togglePauseFromActivity(timerID: timerID, store: timerStore)
+        }
         _session = State(initialValue: AuthSession(
             api: TrackerAPIClient(baseURL: AppConfiguration.apiBaseURL),
             tokenStore: KeychainTokenStore(),

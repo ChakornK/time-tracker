@@ -114,7 +114,7 @@ struct TimerView: View {
 
     private func runningTimerCard(_ timer: RunningTimer) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Timer running")
+            Text(timer.isPaused ? "Timer paused" : "Timer running")
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
             Group {
@@ -128,8 +128,9 @@ struct TimerView: View {
             TimelineView(.periodic(from: timer.startedAt, by: 1)) { context in
                 Text(Duration.seconds(timer.elapsedSeconds(at: context.date)), format: .time(pattern: .hourMinuteSecond))
                     .font(.system(size: 44, weight: .regular, design: .rounded).monospacedDigit())
+                    .foregroundStyle(timer.isPaused ? .secondary : .primary)
                     .contentTransition(.numericText())
-                    .accessibilityLabel("Elapsed time")
+                    .accessibilityLabel(timer.isPaused ? "Elapsed time, paused" : "Elapsed time")
             }
             Label(timer.visibility.label, systemImage: timer.visibility.symbol)
                 .font(.caption)
@@ -147,6 +148,15 @@ struct TimerView: View {
                 .font(.subheadline)
                 .frame(minHeight: 44)
             }
+
+            Button {
+                Task { await model.togglePause() }
+            } label: {
+                Label(timer.isPaused ? "Resume" : "Pause", systemImage: timer.isPaused ? "play.fill" : "pause.fill")
+                    .frame(maxWidth: .infinity, minHeight: 52)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
 
             Button {
                 Task { await model.stop() }

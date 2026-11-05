@@ -32,8 +32,30 @@ struct StopTimerIntent: LiveActivityIntent {
     }
 }
 
+/// The Pause/Resume button on the timer's Live Activity. Compiled into both targets like `StopTimerIntent`.
+struct TogglePauseTimerIntent: LiveActivityIntent {
+    static let title: LocalizedStringResource = "Pause or resume timer"
+    static let isDiscoverable = false
+
+    @Parameter(title: "Timer ID")
+    var timerID: String
+
+    init() {}
+
+    init(timerID: UUID) {
+        self.timerID = timerID.uuidString
+    }
+
+    func perform() async throws -> some IntentResult {
+        guard let id = UUID(uuidString: timerID) else { return .result() }
+        await TimerIntentHandling.togglePause?(id)
+        return .result()
+    }
+}
+
 /// Set by the app at launch. It stays `nil` in the widget extension, which never runs the intent.
 @MainActor
 enum TimerIntentHandling {
     static var stop: (@MainActor @Sendable (UUID) async -> Void)?
+    static var togglePause: (@MainActor @Sendable (UUID) async -> Void)?
 }

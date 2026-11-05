@@ -27,6 +27,7 @@ final class TimerHomeModel {
     var visibility: ActivityVisibility = .public
     var errorMessage: String?
     private var stoppedElsewhereObserver: (any NSObjectProtocol)?
+    private var pauseChangedObserver: (any NSObjectProtocol)?
     var stopFailureMessage: String?
 
     init(
@@ -135,6 +136,41 @@ final class TimerHomeModel {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in await self?.timerStoppedElsewhere() }
+        }
+        pauseChangedObserver = NotificationCenter.default.addObserver(
+            forName: .timerPauseChangedElsewhere,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.timerPauseChangedElsewhere() }
+        }
+    }
+
+    private func timerPauseChangedElsewhere() {
+        reloadLocalData()
+        if let timer = runningTimer {
+            activityState = liveActivity.state(for: timer.id)
+        }
+    }
+
+    /// Pauses a running timer, or resumes a paused one. Paused time is left out of the saved log.
+    func togglePause(at date: Date = .now) async {
+        guard let timer = runningTimer else { return }
+        do {
+            let updated = try store.setTimerPaused(timerID: timer.id, userID: userID, paused: !timer.isPaused, at: date)
+            runningTimer = updated
+            errorMessage = nil
+            publishWidgetSummary()
+            await liveActivity.updatePause(for: updated)
+            activityState = liveActivity.state(for: updated.id)
+        } catch TimerStoreError.timerNotFound {
+            reloadLocalData()
+            await liveActivity.end(timerID: timer.id)
+            activityState = nil
+            publishWidgetSummary()
+            errorMessage = "The timer had already stopped."
+        } catch {
+            errorMessage = "The timer could not be \(timer.isPaused ? "resumed" : "paused"). Try again."
         }
     }
 
@@ -433,7 +469,9 @@ final class TimerHomeModel {
             WidgetSnapshot.RunningTimer(
                 startedAt: timer.startedAt,
                 title: categories.category(withID: timer.categoryIDs.first)?.name ?? timer.title,
-                colorHex: categories.category(withID: timer.categoryIDs.first)?.colorHex
+                colorHex: categories.category(withID: timer.categoryIDs.first)?.colorHex,
+                pausedAt: timer.pausedAt,
+                pausedSeconds: timer.pausedSeconds
             )
         }
         let snapshot = WidgetSnapshot(logs: summaryLogs(from: finished), runningTimer: running)

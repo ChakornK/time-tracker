@@ -33,21 +33,40 @@ struct TimerLiveActivity: Widget {
                         .padding(.top, 8)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Button(intent: StopTimerIntent(timerID: context.attributes.timerID)) {
-                        Label("Stop and save", systemImage: "stop.fill")
+                    HStack(spacing: 8) {
+                        Button(intent: TogglePauseTimerIntent(timerID: context.attributes.timerID)) {
+                            Label(
+                                context.state.isPaused ? "Resume" : "Pause",
+                                systemImage: context.state.isPaused ? "play.fill" : "pause.fill"
+                            )
                             .frame(maxWidth: .infinity, minHeight: 36)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                        Button(intent: StopTimerIntent(timerID: context.attributes.timerID)) {
+                            Label("Stop and save", systemImage: "stop.fill")
+                                .frame(maxWidth: .infinity, minHeight: 36)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
                     .padding(.horizontal, 8)
                     .padding(.top, 8)
                 }
             } compactLeading: {
-                Circle()
-                    .fill(context.state.categoryColor)
-                    .frame(width: 10, height: 10)
-                    .padding(.leading, 6)
-                    .accessibilityLabel(context.state.activityTitle)
+                Group {
+                    if context.state.isPaused {
+                        Image(systemName: "pause.fill")
+                            .font(.caption2)
+                            .foregroundStyle(context.state.categoryColor)
+                    } else {
+                        Circle()
+                            .fill(context.state.categoryColor)
+                            .frame(width: 10, height: 10)
+                    }
+                }
+                .padding(.leading, 6)
+                .accessibilityLabel(context.state.isPaused ? "\(context.state.activityTitle), paused" : context.state.activityTitle)
             } compactTrailing: {
                 // Wide enough for "1:23:45" once a timer passes an hour.
                 context.state.elapsedText
@@ -55,10 +74,18 @@ struct TimerLiveActivity: Widget {
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 68)
             } minimal: {
-                Circle()
-                    .fill(context.state.categoryColor)
-                    .frame(width: 10, height: 10)
-                    .accessibilityLabel(context.state.activityTitle)
+                Group {
+                    if context.state.isPaused {
+                        Image(systemName: "pause.fill")
+                            .font(.caption2)
+                            .foregroundStyle(context.state.categoryColor)
+                    } else {
+                        Circle()
+                            .fill(context.state.categoryColor)
+                            .frame(width: 10, height: 10)
+                    }
+                }
+                .accessibilityLabel(context.state.isPaused ? "\(context.state.activityTitle), paused" : context.state.activityTitle)
             }
         }
     }

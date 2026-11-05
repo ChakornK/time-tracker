@@ -94,7 +94,7 @@ private struct ProductivityWidgetView: View {
                     .font(.headline)
                     .lineLimit(1)
                     .privacySensitive()
-                elapsed(since: timer.startedAt)
+                elapsed(of: timer)
                     .font(.title3.monospacedDigit())
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -119,7 +119,7 @@ private struct ProductivityWidgetView: View {
     @ViewBuilder
     private var inline: some View {
         if let timer = summary.runningTimer {
-            (Text("\(timer.title) ") + elapsed(since: timer.startedAt))
+            (Text("\(timer.title) ") + elapsed(of: timer))
                 .privacySensitive()
         } else {
             Text("\(DurationFormat.compact(summary.todaySeconds)) today")
@@ -135,7 +135,7 @@ private struct ProductivityWidgetView: View {
             Text(timer.title)
                 .lineLimit(1)
             Spacer(minLength: 4)
-            elapsed(since: timer.startedAt)
+            elapsed(of: timer)
                 .monospacedDigit()
         }
         .font(.caption.weight(.semibold))
@@ -143,8 +143,8 @@ private struct ProductivityWidgetView: View {
     }
 
     /// Counts up on its own, so the widget never needs a new entry to show the running time.
-    private func elapsed(since startedAt: Date) -> Text {
-        Text(timerInterval: startedAt...Date.distantFuture, countsDown: false)
+    private func elapsed(of timer: WidgetSnapshot.RunningTimer) -> Text {
+        Text(timerInterval: timer.displayStart...Date.distantFuture, pauseTime: timer.pausedAt, countsDown: false)
     }
 
     private func total(title: String, seconds: Int) -> some View {

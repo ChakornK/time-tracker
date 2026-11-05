@@ -36,6 +36,24 @@ struct SwiftDataTimerStoreTests {
         #expect(log.notes == "Outline and first draft")
     }
 
+    @Test func pauseStateSurvivesReloadAndShortensTheLog() throws {
+        let userID = UUID()
+        let store = SwiftDataTimerStore(modelContainer: try makeContainer())
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let timer = try store.start(userID: userID, title: "Writing", startedAt: start)
+
+        _ = try store.setTimerPaused(timerID: timer.id, userID: userID, paused: true, at: start.addingTimeInterval(100))
+        #expect(try store.currentTimer(userID: userID)?.pausedAt == start.addingTimeInterval(100))
+
+        _ = try store.setTimerPaused(timerID: timer.id, userID: userID, paused: false, at: start.addingTimeInterval(400))
+        let resumed = try store.currentTimer(userID: userID)
+        #expect(resumed?.pausedAt == nil)
+        #expect(resumed?.pausedSeconds == 300)
+
+        let log = try store.stop(timerID: timer.id, userID: userID, endedAt: start.addingTimeInterval(500))
+        #expect(log.durationSeconds == 200)
+    }
+
     @Test func notesAreTrimmedAndCappedByTheServersUTF16Length() {
         #expect(LogNotes.cleaned(nil) == nil)
         #expect(LogNotes.cleaned("  \n ") == nil)

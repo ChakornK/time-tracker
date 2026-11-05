@@ -43,6 +43,11 @@ public final class AccountScopedTimerStore: TimerStoreProtocol {
         return try store.updateTimerNotes(timerID: timerID, userID: userID, notes: notes)
     }
 
+    public func setTimerPaused(timerID: UUID, userID requestedUserID: UUID, paused: Bool, at date: Date) throws -> RunningTimer {
+        try verify(requestedUserID)
+        return try store.setTimerPaused(timerID: timerID, userID: userID, paused: paused, at: date)
+    }
+
     public func discardTimer(timerID: UUID, userID requestedUserID: UUID) throws {
         try verify(requestedUserID)
         try store.discardTimer(timerID: timerID, userID: userID)

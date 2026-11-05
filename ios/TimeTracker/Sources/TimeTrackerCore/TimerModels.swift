@@ -21,6 +21,10 @@ public struct RunningTimer: Equatable, Sendable, Identifiable {
     public var categoryIDs: [UUID]
     public var visibility: ActivityVisibility
     public let startedAt: Date
+    /// When the current pause began, or `nil` while the timer is running.
+    public var pausedAt: Date?
+    /// Time spent in earlier, finished pauses.
+    public var pausedSeconds: TimeInterval
 
     public init(
         id: UUID = UUID(),
@@ -29,7 +33,9 @@ public struct RunningTimer: Equatable, Sendable, Identifiable {
         notes: String? = nil,
         categoryIDs: [UUID] = [],
         visibility: ActivityVisibility = .public,
-        startedAt: Date = .now
+        startedAt: Date = .now,
+        pausedAt: Date? = nil,
+        pausedSeconds: TimeInterval = 0
     ) {
         self.id = id
         self.userID = userID
@@ -38,10 +44,15 @@ public struct RunningTimer: Equatable, Sendable, Identifiable {
         self.categoryIDs = categoryIDs
         self.visibility = visibility
         self.startedAt = startedAt
+        self.pausedAt = pausedAt
+        self.pausedSeconds = pausedSeconds
     }
 
+    public var isPaused: Bool { pausedAt != nil }
+
+    /// Time counted toward the log: wall-clock time since the start, less every pause. Frozen while paused.
     public func elapsedSeconds(at date: Date = .now) -> TimeInterval {
-        max(0, date.timeIntervalSince(startedAt))
+        PauseClock.elapsed(startedAt: startedAt, pausedSeconds: pausedSeconds, pausedAt: pausedAt, at: date)
     }
 }
 

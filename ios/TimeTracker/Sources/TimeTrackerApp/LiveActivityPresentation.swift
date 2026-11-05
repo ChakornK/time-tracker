@@ -11,7 +11,11 @@ extension TimerActivityAttributes.ContentState {
 
     /// Counts up on its own, so the activity never needs an update to show the running time.
     var elapsedText: Text {
-        Text(timerInterval: startedAt...Date.distantFuture, countsDown: false)
+        Text(
+            timerInterval: PauseClock.displayStart(startedAt: startedAt, pausedSeconds: pausedSeconds ?? 0)...Date.distantFuture,
+            pauseTime: pausedAt,
+            countsDown: false
+        )
     }
 }
 
@@ -30,7 +34,7 @@ struct LiveTimerLockScreenView: View {
                 Text(state.activityTitle)
                     .font(.headline)
                     .lineLimit(1)
-                Text("Timer running")
+                Text(state.isPaused ? "Timer paused" : "Timer running")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -41,11 +45,31 @@ struct LiveTimerLockScreenView: View {
                 .frame(maxWidth: 120, alignment: .trailing)
                 .accessibilityLabel(Text("Elapsed time ") + state.elapsedText)
             if let timerID {
+                PauseTimerButton(timerID: timerID, isPaused: state.isPaused)
                 StopTimerButton(timerID: timerID)
             }
         }
         .padding(16)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Pauses a running timer, or resumes a paused one, without opening the app.
+struct PauseTimerButton: View {
+    let timerID: UUID
+    let isPaused: Bool
+
+    var body: some View {
+        Button(intent: TogglePauseTimerIntent(timerID: timerID)) {
+            Label(isPaused ? "Resume" : "Pause", systemImage: isPaused ? "play.fill" : "pause.fill")
+                .labelStyle(.iconOnly)
+                .font(.title3)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .tint(.orange)
+        .accessibilityLabel(isPaused ? "Resume timer" : "Pause timer")
     }
 }
 

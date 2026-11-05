@@ -81,4 +81,44 @@ struct TimerEngineTests {
             try engine.stop(timer: nil, at: Date())
         }
     }
+
+    @Test func pausedTimerStopsCountingAndResumesWhereItLeftOff() throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let running = RunningTimer(title: "Reading", startedAt: start)
+
+        let paused = try engine.pause(timer: running, at: start.addingTimeInterval(60))
+        #expect(paused.isPaused)
+        #expect(paused.elapsedSeconds(at: start.addingTimeInterval(500)) == 60)
+
+        let resumed = try engine.resume(timer: paused, at: start.addingTimeInterval(160))
+        #expect(!resumed.isPaused)
+        #expect(resumed.pausedSeconds == 100)
+        #expect(resumed.elapsedSeconds(at: start.addingTimeInterval(190)) == 90)
+    }
+
+    @Test func pausingTwiceKeepsTheFirstPause() throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let paused = try engine.pause(timer: RunningTimer(title: "Reading", startedAt: start), at: start.addingTimeInterval(30))
+        let again = try engine.pause(timer: paused, at: start.addingTimeInterval(90))
+        #expect(again.pausedAt == start.addingTimeInterval(30))
+    }
+
+    @Test func stoppingLeavesPausedTimeOutOfTheLog() throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        var timer = RunningTimer(title: "Reading", startedAt: start)
+        timer = try engine.pause(timer: timer, at: start.addingTimeInterval(60))
+        timer = try engine.resume(timer: timer, at: start.addingTimeInterval(160))
+
+        let log = try engine.stop(timer: timer, at: start.addingTimeInterval(220))
+        #expect(log.startedAt == start)
+        #expect(log.durationSeconds == 120)
+    }
+
+    @Test func stoppingWhilePausedCountsOnlyTimeBeforeThePause() throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let timer = try engine.pause(timer: RunningTimer(title: "Reading", startedAt: start), at: start.addingTimeInterval(45))
+
+        let log = try engine.stop(timer: timer, at: start.addingTimeInterval(1_000))
+        #expect(log.durationSeconds == 45)
+    }
 }

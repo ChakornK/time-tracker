@@ -10,6 +10,9 @@ public final class StoredTimer {
     public var categoryIDsData: Data
     public var visibilityRawValue: String
     public var startedAt: Date
+    /// Optional so stores written before pausing existed migrate without a default.
+    public var pausedAt: Date?
+    public var pausedSeconds: Double?
 
     public init(timer: RunningTimer) throws {
         id = timer.id
@@ -19,6 +22,8 @@ public final class StoredTimer {
         categoryIDsData = try CategoryIDCoding.encode(timer.categoryIDs)
         visibilityRawValue = timer.visibility.rawValue
         startedAt = timer.startedAt
+        pausedAt = timer.pausedAt
+        pausedSeconds = timer.pausedSeconds
     }
 
     public var runningTimer: RunningTimer? {
@@ -36,7 +41,9 @@ public final class StoredTimer {
             notes: notes,
             categoryIDs: categoryIDs,
             visibility: visibility,
-            startedAt: startedAt
+            startedAt: startedAt,
+            pausedAt: pausedAt,
+            pausedSeconds: pausedSeconds ?? 0
         )
     }
 }
@@ -160,6 +167,8 @@ public protocol TimerStoreProtocol {
     func stop(timerID: UUID, userID: UUID, endedAt: Date) throws -> LocalActivityLog
     /// Replaces a running timer's notes; they carry into the log when the timer stops.
     func updateTimerNotes(timerID: UUID, userID: UUID, notes: String?) throws -> RunningTimer
+    /// Pauses or resumes a running timer. Doing either twice leaves it as it is.
+    func setTimerPaused(timerID: UUID, userID: UUID, paused: Bool, at date: Date) throws -> RunningTimer
     /// Throws away a running timer without saving a log, for one started by mistake.
     func discardTimer(timerID: UUID, userID: UUID) throws
     /// Changes a finished log on this device. Throws `logAwaitingSync` when its `changeRoute` says to
@@ -268,6 +277,25 @@ public final class SwiftDataTimerStore: TimerStoreProtocol {
         try modelContext.save()
         timer.notes = notes
         return timer
+    }
+
+    public func setTimerPaused(timerID: UUID, userID: UUID, paused: Bool, at date: Date = .now) throws -> RunningTimer {
+        let descriptor = FetchDescriptor<StoredTimer>(
+            predicate: #Predicate { $0.id == timerID && $0.userID == userID }
+        )
+        guard let storedTimer = try modelContext.fetch(descriptor).first else {
+            throw TimerStoreError.timerNotFound
+        }
+        guard let timer = storedTimer.runningTimer else {
+            throw TimerStoreError.invalidStoredTimer
+        }
+        let changed = paused
+            ? try engine.pause(timer: timer, at: date)
+            : try engine.resume(timer: timer, at: date)
+        storedTimer.pausedAt = changed.pausedAt
+        storedTimer.pausedSeconds = changed.pausedSeconds
+        try modelContext.save()
+        return changed
     }
 
     public func discardTimer(timerID: UUID, userID: UUID) throws {
