@@ -1,15 +1,46 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
+var packageDependencies: [Package.Dependency] = [
+    .package(
+        url: "https://github.com/ChakornK/OpenSwiftData.git",
+        revision: "a8b742866bb5ee6d1432588eb58c418d0ac3ac10"),
+]
+var swiftDataDependencies: [Target.Dependency] = [
+    .product(name: "SwiftData", package: "OpenSwiftData"),
+]
+var predicateCompatibilitySettings: [SwiftSetting] = []
+#if os(Linux)
+packageDependencies.append(
+    .package(
+        url: "https://github.com/ChakornK/FoundationEssentialsShim.git",
+        revision: "fb21c72878713a04602f584ada694ce19e37b929"))
+swiftDataDependencies.append(
+    .product(
+        name: "FoundationEssentials",
+        package: "FoundationEssentialsShim",
+        condition: .when(platforms: [.iOS])))
+predicateCompatibilitySettings.append(
+    .unsafeFlags(
+        ["-Xfrontend", "-import-module", "-Xfrontend", "FoundationEssentials"],
+        .when(platforms: [.iOS])))
+#endif
 let package = Package(
     name: "TimeTracker",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
         .library(name: "TimeTrackerCore", targets: ["TimeTrackerCore"]),
     ],
+    dependencies: packageDependencies,
     targets: [
         // ActivityKit is unavailable on macOS, where the package tests run.
-        .target(name: "TimeTrackerCore", exclude: ["TimerActivityAttributes.swift"]),
-        .testTarget(name: "TimeTrackerCoreTests", dependencies: ["TimeTrackerCore"]),
+        .target(
+            name: "TimeTrackerCore",
+            dependencies: swiftDataDependencies,
+            exclude: ["TimerActivityAttributes.swift"],
+            swiftSettings: predicateCompatibilitySettings),
+        .testTarget(
+            name: "TimeTrackerCoreTests",
+            dependencies: ["TimeTrackerCore", .product(name: "SwiftData", package: "OpenSwiftData")]),
     ]
 )

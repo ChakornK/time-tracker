@@ -74,6 +74,7 @@
 		A10000000000000000000071 /* Sources/TimeTrackerApp/LogRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000071 /* Sources/TimeTrackerApp/LogRow.swift */; };
 		CCDCD77C308F222F00DCF825 /* Sources/TimeTrackerCore/DurationFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000021 /* Sources/TimeTrackerCore/DurationFormat.swift */; };
 		CCDCD77D308F269900DCF825 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000042 /* WidgetKit.framework */; };
+		F60000000000000000000001 /* SwiftData in Frameworks */ = {isa = PBXBuildFile; productRef = F70000000000000000000001 /* SwiftData */; };
 		CCDCD77E308F269900DCF825 /* WidgetKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000042 /* WidgetKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -179,6 +180,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F60000000000000000000001 /* SwiftData in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,12 +345,34 @@
 			productRefGroup = D10000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				F80000000000000000000001 /* XCRemoteSwiftPackageReference "https://github.com/ChakornK/OpenSwiftData.git" */,
+			);
 			targets = (
 				E10000000000000000000001 /* TimeTracker */,
 				E10000000000000000000040 /* TimeTrackerWidgets */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F80000000000000000000001 /* XCRemoteSwiftPackageReference "https://github.com/ChakornK/OpenSwiftData.git" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ChakornK/OpenSwiftData.git";
+			requirement = {
+				kind = revision;
+				revision = a8b742866bb5ee6d1432588eb58c418d0ac3ac10;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F70000000000000000000001 /* SwiftData */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F80000000000000000000001 /* XCRemoteSwiftPackageReference "https://github.com/ChakornK/OpenSwiftData.git" */;
+			productName = SwiftData;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		C30000000000000000000001 /* Resources */ = {
