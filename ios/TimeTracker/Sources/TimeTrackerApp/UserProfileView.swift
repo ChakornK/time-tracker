@@ -173,7 +173,7 @@ struct UserProfileView: View {
     }
 
     private func countLabel(_ count: Int, singular: String, plural: String) -> some View {
-        (Text("\(count) ").fontWeight(.semibold) + Text(count == 1 ? singular : plural).foregroundStyle(.secondary))
+        Text("\(Text("\(count)").fontWeight(.semibold)) \(Text(count == 1 ? singular : plural).foregroundStyle(.secondary))")
             .font(.subheadline)
     }
 

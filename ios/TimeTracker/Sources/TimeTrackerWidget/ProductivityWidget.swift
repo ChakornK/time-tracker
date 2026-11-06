@@ -119,7 +119,7 @@ private struct ProductivityWidgetView: View {
     @ViewBuilder
     private var inline: some View {
         if let timer = summary.runningTimer {
-            (Text("\(timer.title) ") + elapsed(of: timer))
+            Text("\(timer.title) \(elapsed(of: timer))")
                 .privacySensitive()
         } else {
             Text("\(DurationFormat.compact(summary.todaySeconds)) today")
