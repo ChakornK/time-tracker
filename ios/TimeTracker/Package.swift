@@ -35,10 +35,11 @@ let package = Package(
     targets: [
         // ActivityKit is unavailable on macOS, where the package tests run.
         .target(
-            name: "TimeTrackerCore",
-            dependencies: swiftDataDependencies,
-            exclude: ["TimerActivityAttributes.swift"],
-            swiftSettings: predicateCompatibilitySettings),
+        name: "TimeTrackerCore",
+        dependencies: swiftDataDependencies,
+        path: ".",
+        sources: ["Sources/TimeTrackerApp", "Sources/TimeTrackerCore"],
+        swiftSettings: predicateCompatibilitySettings),
         .testTarget(
             name: "TimeTrackerCoreTests",
             dependencies: ["TimeTrackerCore", .product(name: "SwiftData", package: "OpenSwiftData")]),
