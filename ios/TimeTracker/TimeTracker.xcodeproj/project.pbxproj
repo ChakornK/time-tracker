@@ -511,7 +511,6 @@
 				CODE_SIGN_ENTITLEMENTS = TimeTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BMVGB7G6S4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Time Tracker";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -533,7 +532,6 @@
 				CODE_SIGN_ENTITLEMENTS = TimeTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BMVGB7G6S4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Time Tracker";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -555,7 +553,6 @@
 				CODE_SIGN_ENTITLEMENTS = TimeTrackerWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BMVGB7G6S4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "TimeTrackerWidgets-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -574,7 +571,6 @@
 				CODE_SIGN_ENTITLEMENTS = TimeTrackerWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BMVGB7G6S4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "TimeTrackerWidgets-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
