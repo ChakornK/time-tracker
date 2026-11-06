@@ -6,7 +6,7 @@ struct CategoryTimeAnalyticsTests {
     private let writing = UUID()
     private let reading = UUID()
 
-    @Test func periodsCoverTodayThisWeekAndThisMonth() {
+    @Test func periodsCoverTodayAndThisWeek() {
         let now = date("2026-02-11T15:00:00Z")
 
         #expect(AnalyticsPeriod.day.interval(containing: now, calendar: calendar).duration == 86_400)
@@ -14,7 +14,6 @@ struct CategoryTimeAnalyticsTests {
         // The test calendar's weeks start on Sunday, so Wednesday the 11th is in the week of the 8th.
         #expect(week.start == date("2026-02-08T00:00:00Z"))
         #expect(week.end == date("2026-02-15T00:00:00Z"))
-        #expect(AnalyticsPeriod.month.interval(containing: now, calendar: calendar).duration == 28 * 86_400)
     }
 
     @Test func splitsLogsAcrossMidnightIntoEachDay() {
@@ -57,7 +56,7 @@ struct CategoryTimeAnalyticsTests {
                 log("2026-02-11T09:00:00Z", "2026-02-11T10:00:00Z", [writing]),
                 log("2026-02-11T10:00:00Z", "2026-02-11T13:00:00Z", [reading]),
             ],
-            period: .month,
+            period: .week,
             now: date("2026-02-11T15:00:00Z"),
             calendar: calendar
         )
@@ -80,6 +79,40 @@ struct CategoryTimeAnalyticsTests {
         #expect(analytics.totalsByCategory[writing] == 7_200)
         #expect(analytics.totalsByCategory[deleted] == nil)
         #expect(analytics.totalsByCategory[nil] == 1_800)
+    }
+
+    @Test func dayPeriodSplitsTimeIntoHours() {
+        let analytics = CategoryTimeAnalytics(
+            logs: [log("2026-02-11T09:30:00Z", "2026-02-11T11:15:00Z", [writing])],
+            period: .day,
+            now: date("2026-02-11T15:00:00Z"),
+            calendar: calendar
+        )
+
+        #expect(analytics.hourly.count == 3)
+        #expect(analytics.hourly.contains(HourlyCategoryTime(hour: date("2026-02-11T09:00:00Z"), categoryID: writing, seconds: 1_800)))
+        #expect(analytics.hourly.contains(HourlyCategoryTime(hour: date("2026-02-11T10:00:00Z"), categoryID: writing, seconds: 3_600)))
+        #expect(analytics.hourly.contains(HourlyCategoryTime(hour: date("2026-02-11T11:00:00Z"), categoryID: writing, seconds: 900)))
+    }
+
+    @Test func weekPeriodHasNoHourlyBreakdown() {
+        let analytics = CategoryTimeAnalytics(
+            logs: [log("2026-02-11T09:00:00Z", "2026-02-11T10:00:00Z", [writing])],
+            period: .week,
+            now: date("2026-02-11T15:00:00Z"),
+            calendar: calendar
+        )
+
+        #expect(analytics.hourly.isEmpty)
+    }
+
+    @Test func earlierPeriodsStepBackByDayAndByWeek() {
+        let now = date("2026-02-11T15:00:00Z")
+
+        #expect(AnalyticsPeriod.day.interval(containing: now, offset: -1, calendar: calendar).start == date("2026-02-10T00:00:00Z"))
+        #expect(AnalyticsPeriod.week.interval(containing: now, offset: -1, calendar: calendar).start == date("2026-02-01T00:00:00Z"))
+        #expect(AnalyticsPeriod.week.referenceDate(offset: 0, now: now, calendar: calendar) == now)
+        #expect(AnalyticsPeriod.week.referenceDate(offset: -1, now: now, calendar: calendar) == date("2026-02-07T23:59:59Z"))
     }
 
     private var calendar: Calendar {

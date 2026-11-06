@@ -3,11 +3,10 @@ import Foundation
 public enum AnalyticsPeriod: String, CaseIterable, Identifiable, Sendable {
     case day
     case week
-    case month
 
     public var id: Self { self }
 
-    /// The calendar span the period covers: today, this calendar week, or this calendar month. These match
+    /// The calendar span the period covers: today or this calendar week. These match
     /// `GoalPeriod`, so a weekly goal and the week's total always agree.
     public func interval(containing now: Date, calendar: Calendar = .current) -> DateInterval {
         let today = calendar.dateInterval(of: .day, for: now)
@@ -17,15 +16,37 @@ public enum AnalyticsPeriod: String, CaseIterable, Identifiable, Sendable {
             return today
         case .week:
             return calendar.dateInterval(of: .weekOfYear, for: now) ?? today
-        case .month:
-            return calendar.dateInterval(of: .month, for: now) ?? today
         }
+    }
+}
+
+extension AnalyticsPeriod {
+    /// The period `offset` steps from the one containing `now`: 0 is current, -1 the one before it.
+    public func interval(containing now: Date, offset: Int, calendar: Calendar = .current) -> DateInterval {
+        let component: Calendar.Component = self == .day ? .day : .weekOfYear
+        let shifted = calendar.date(byAdding: component, value: offset, to: now) ?? now
+        return interval(containing: shifted, calendar: calendar)
+    }
+
+    /// The moment analytics for that period should treat as "now": the real `now` for the current period,
+    /// or the last instant of an earlier one so all of its days count as elapsed.
+    public func referenceDate(offset: Int, now: Date, calendar: Calendar = .current) -> Date {
+        guard offset != 0 else { return now }
+        return interval(containing: now, offset: offset, calendar: calendar).end.addingTimeInterval(-1)
     }
 }
 
 /// Seconds tracked per category within one day.
 public struct DailyCategoryTime: Hashable, Sendable {
     public let day: Date
+    /// `nil` collects logs without a category.
+    public let categoryID: UUID?
+    public let seconds: Double
+}
+
+/// Seconds tracked per category within one clock hour.
+public struct HourlyCategoryTime: Hashable, Sendable {
+    public let hour: Date
     /// `nil` collects logs without a category.
     public let categoryID: UUID?
     public let seconds: Double
@@ -38,6 +59,8 @@ public struct CategoryTimeAnalytics: Sendable {
     /// The first instant of each day in the interval, in order.
     public let days: [Date]
     public let daily: [DailyCategoryTime]
+    /// Time per category in each hour of the day. Only filled in for the `.day` period.
+    public let hourly: [HourlyCategoryTime]
     public let totalsByCategory: [UUID?: Double]
     /// The part of the period that has already happened.
     public let elapsedSeconds: Double
@@ -63,7 +86,21 @@ public struct CategoryTimeAnalytics: Sendable {
             }
         }
 
+        var hourly: [HourlyCategoryTime] = []
+        if period == .day {
+            var hourStart = interval.start
+            while hourStart < interval.end {
+                guard let next = calendar.date(byAdding: .hour, value: 1, to: hourStart) else { break }
+                let hourInterval = DateInterval(start: hourStart, end: next)
+                for (categoryID, seconds) in relevantLogs.categorySeconds(within: hourInterval) {
+                    hourly.append(HourlyCategoryTime(hour: hourStart, categoryID: categoryID, seconds: seconds))
+                }
+                hourStart = next
+            }
+        }
+
         self.interval = interval
+        self.hourly = hourly
         self.days = days
         self.daily = daily
         self.totalsByCategory = totals

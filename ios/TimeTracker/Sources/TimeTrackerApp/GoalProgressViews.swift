@@ -5,7 +5,6 @@ extension GoalPeriod {
         switch self {
         case .day: "Daily"
         case .week: "Weekly"
-        case .month: "Monthly"
         }
     }
 
@@ -14,7 +13,6 @@ extension GoalPeriod {
         switch self {
         case .day: "today"
         case .week: "this week"
-        case .month: "this month"
         }
     }
 
@@ -22,7 +20,6 @@ extension GoalPeriod {
         switch self {
         case .day: 86_400
         case .week: 7 * 86_400
-        case .month: 31 * 86_400
         }
     }
 }
@@ -64,8 +61,9 @@ struct GoalProgressRow: View {
     }
 }
 
-/// Progress toward every goal, shown at the top of Analytics.
+/// Progress toward every goal of one period, shown at the top of the Overall tab.
 struct GoalsProgressCard: View {
+    let period: GoalPeriod
     let goals: [APIGoal]
     let logs: [ProductivitySummaryLog]
     let colors: CategoryColorResolver
@@ -73,12 +71,13 @@ struct GoalsProgressCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Goals")
+            Text("\(period.adjective) goals")
                 .font(.headline)
             ForEach(goals) { goal in
                 GoalProgressRow(
                     progress: GoalProgress(goal: goal, logs: logs, now: now),
-                    series: colors.series(for: goal.categoryId)
+                    series: colors.series(for: goal.categoryId),
+                    showsPeriod: false
                 )
             }
         }

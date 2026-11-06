@@ -3,11 +3,10 @@ import Foundation
 public enum GoalPeriod: String, Codable, CaseIterable, Identifiable, Sendable {
     case day
     case week
-    case month
 
     public var id: Self { self }
 
-    /// The calendar span a goal counts toward: today, this week, or this month. Weeks start on the
+    /// The calendar span a goal counts toward: today or this week. Weeks start on the
     /// calendar's first weekday, so the locale decides between Sunday and Monday.
     public func interval(containing now: Date, calendar: Calendar = .current) -> DateInterval {
         let today = calendar.dateInterval(of: .day, for: now)
@@ -15,7 +14,6 @@ public enum GoalPeriod: String, Codable, CaseIterable, Identifiable, Sendable {
         let component: Calendar.Component = switch self {
         case .day: .day
         case .week: .weekOfYear
-        case .month: .month
         }
         return calendar.dateInterval(of: component, for: now) ?? today
     }

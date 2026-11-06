@@ -6,7 +6,7 @@ struct GoalProgressTests {
     private let reading = UUID()
     private let writing = UUID()
 
-    @Test func periodsCoverTodayThisCalendarWeekAndThisCalendarMonth() {
+    @Test func periodsCoverTodayThisCalendarWeek() {
         // A Wednesday.
         let now = date("2026-02-11T15:00:00Z")
 
@@ -14,8 +14,6 @@ struct GoalProgressTests {
             == DateInterval(start: date("2026-02-11T00:00:00Z"), end: date("2026-02-12T00:00:00Z")))
         #expect(GoalPeriod.week.interval(containing: now, calendar: calendar)
             == DateInterval(start: date("2026-02-08T00:00:00Z"), end: date("2026-02-15T00:00:00Z")))
-        #expect(GoalPeriod.month.interval(containing: now, calendar: calendar)
-            == DateInterval(start: date("2026-02-01T00:00:00Z"), end: date("2026-03-01T00:00:00Z")))
     }
 
     @Test func weeksStartOnTheCalendarsFirstWeekday() {

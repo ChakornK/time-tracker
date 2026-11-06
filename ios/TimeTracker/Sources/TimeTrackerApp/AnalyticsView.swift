@@ -5,7 +5,6 @@ extension AnalyticsPeriod {
         switch self {
         case .day: "Today"
         case .week: "This week"
-        case .month: "This month"
         }
     }
 
@@ -14,7 +13,6 @@ extension AnalyticsPeriod {
         switch self {
         case .day: "today"
         case .week: "this week"
-        case .month: "this month"
         }
     }
 
@@ -22,7 +20,6 @@ extension AnalyticsPeriod {
         switch self {
         case .day: .day
         case .week: .week
-        case .month: .month
         }
     }
 }
@@ -49,6 +46,8 @@ struct AnalyticsView: View {
     let categories: [APICategory]
     let goals: [APIGoal]
     @State private var scope = AnalyticsScope.period(.week)
+    /// How far back each period's chart has been swiped, kept per period.
+    @State private var offsets: [AnalyticsPeriod: Int] = [:]
 
     var body: some View {
         let colors = CategoryColorResolver(categories: categories)
@@ -62,13 +61,13 @@ struct AnalyticsView: View {
                 }
                 .pickerStyle(.segmented)
 
-                // Re-evaluates each minute so day, week, and month boundaries roll over without new logs.
+                // Re-evaluates each minute so day and week boundaries roll over without new logs.
                 TimelineView(.everyMinute) { context in
                     switch scope {
                     case .period(let period):
                         periodCards(period, colors: colors, now: context.date)
                     case .overall:
-                        OverallView(logs: logs, colors: colors, now: context.date)
+                        OverallView(logs: logs, goals: goals, colors: colors, now: context.date)
                     }
                 }
             }
@@ -80,20 +79,36 @@ struct AnalyticsView: View {
 }
 
 extension AnalyticsView {
+    /// The furthest-back day or week that still reaches the first log, so paging stops there.
+    private func oldestOffset(for period: AnalyticsPeriod, now: Date) -> Int {
+        guard let earliest = logs.map(\.startedAt).min() else { return 0 }
+        var offset = 0
+        while offset > -1_000, earliest < period.interval(containing: now, offset: offset).start {
+            offset -= 1
+        }
+        return offset
+    }
+
     @ViewBuilder
     private func periodCards(_ period: AnalyticsPeriod, colors: CategoryColorResolver, now: Date) -> some View {
+        let offset = offsets[period] ?? 0
+        let reference = period.referenceDate(offset: offset, now: now)
         let periodGoals = goals.filter { $0.period == period.goalPeriod }
         VStack(spacing: 16) {
             InsightsSummaryCard(
-                analytics: CategoryTimeAnalytics(logs: logs, period: period, now: now),
-                goalProgress: periodGoals.map { GoalProgress(goal: $0, logs: logs, now: now) },
+                analytics: CategoryTimeAnalytics(logs: logs, period: period, now: reference),
+                goalProgress: periodGoals.map { GoalProgress(goal: $0, logs: logs, now: reference) },
                 colors: colors
             )
-            if !periodGoals.isEmpty {
-                GoalsProgressCard(goals: periodGoals, logs: logs, colors: colors, now: now)
-            }
-            CategoryBarChartCard(logs: logs, period: period, colors: colors, now: now)
-            TrackedTimePieCard(logs: logs, period: period, colors: colors, now: now)
+            ScreenTimeChartCard(
+                logs: logs,
+                period: period,
+                colors: colors,
+                now: now,
+                offset: Binding(get: { offsets[period] ?? 0 }, set: { offsets[period] = $0 }),
+                oldestOffset: oldestOffset(for: period, now: now)
+            )
+            .id(period)
         }
     }
 }

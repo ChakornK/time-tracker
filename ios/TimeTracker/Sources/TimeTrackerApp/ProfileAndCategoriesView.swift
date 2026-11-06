@@ -366,7 +366,7 @@ struct ProfileAndCategoriesView: View {
                     if model.goals.isLoading {
                         ProgressView("Loading goals")
                     } else {
-                        Text("Set a goal for how much time you want to spend on a category each day, week, or month.")
+                        Text("Set a goal for how much time you want to spend on a category each day or week.")
                             .foregroundStyle(.secondary)
                     }
                     addGoalButton
@@ -434,7 +434,7 @@ struct ProfileAndCategoriesView: View {
             goalSheet = .edit(goal)
         } label: {
             // Inside the row so each goal stays its own Form row; re-evaluates each
-            // minute so goals reset when their day, week, or month ends.
+            // minute so goals reset when their day or week ends.
             TimelineView(.everyMinute) { context in
                 GoalProgressRow(
                     progress: GoalProgress(goal: goal, logs: logs, now: context.date),

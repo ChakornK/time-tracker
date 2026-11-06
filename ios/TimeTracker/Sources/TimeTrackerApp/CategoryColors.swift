@@ -23,10 +23,14 @@ enum ChartPalette {
 
     static let categorical: [Color] = slots.map { Color(light: $0.light, dark: $0.dark) }
 
-    /// A category's stored `#RRGGBB` color: palette values get their slot's dark-mode step, any other
-    /// value is shown as is, and malformed values fall back to neutral.
+    /// The grey the backend gives every category past the eighth (`overflowCategoryColor`).
+    private static let overflow = 0x8E8E93
+
+    /// A category's stored `#RRGGBB` color: palette values get their slot's dark-mode step, the overflow
+    /// grey stays neutral, any other value is shown as is, and malformed values fall back to neutral.
     static func color(forHex hex: String) -> Color {
         guard hex.count == 7, hex.first == "#", let value = Int(hex.dropFirst(), radix: 16) else { return neutral }
+        if value == overflow { return neutral }
         if let slot = slots.first(where: { $0.light == value }) {
             return Color(light: slot.light, dark: slot.dark)
         }

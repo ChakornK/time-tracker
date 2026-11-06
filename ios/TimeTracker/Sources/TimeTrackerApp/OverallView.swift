@@ -4,24 +4,29 @@ import SwiftUI
 /// How tracking is going over everything logged on this device: totals, streaks, records and patterns.
 struct OverallView: View {
     let logs: [ProductivitySummaryLog]
+    let goals: [APIGoal]
     let colors: CategoryColorResolver
     let now: Date
 
     var body: some View {
         let overall = OverallAnalytics(logs: logs, now: now)
 
-        if overall.isEmpty {
-            Text("Nothing tracked yet. Start a timer and your overall stats will build up here.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .cardStyle()
-        } else {
-            VStack(spacing: 16) {
+        VStack(spacing: 16) {
+            ForEach([GoalPeriod.day, .week], id: \.self) { period in
+                let periodGoals = goals.filter { $0.period == period }
+                if !periodGoals.isEmpty {
+                    GoalsProgressCard(period: period, goals: periodGoals, logs: logs, colors: colors, now: now)
+                }
+            }
+            if overall.isEmpty {
+                Text("Nothing tracked yet. Start a timer and your overall stats will build up here.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .cardStyle()
+            } else {
                 OverallTotalCard(overall: overall)
                 OverallCategoryCard(overall: overall, colors: colors)
-                OverallSessionsCard(overall: overall)
-                OverallStreaksCard(overall: overall)
-                OverallRecordsCard(overall: overall)
+                // Hidden for now, not deleted: OverallSessionsCard, OverallStreaksCard, OverallRecordsCard.
                 WeekdayPatternCard(overall: overall)
                 MonthlyTrendCard(overall: overall)
             }
@@ -93,22 +98,27 @@ private struct OverallCategoryCard: View {
     var body: some View {
         let ranked = overall.rankedCategoryIDs
         let shown = isShowingAll ? ranked : Array(ranked.prefix(Self.collapsedCount))
+        let slices = slices(shown: shown, ranked: ranked)
 
         VStack(alignment: .leading, spacing: 12) {
             Text("Time by category")
                 .font(.headline)
-            ForEach(shown, id: \.self) { categoryID in
-                let seconds = overall.totalsByCategory[categoryID] ?? 0
-                VStack(alignment: .leading, spacing: 6) {
-                    LegendRow(
-                        series: colors.series(for: categoryID),
-                        seconds: seconds,
-                        detail: share(seconds)
-                    )
-                    ProgressView(value: min(1, seconds / max(1, Double(overall.trackedSeconds))))
-                        .tint(colors.series(for: categoryID).color)
-                        .accessibilityHidden(true)
-                }
+            Chart(slices) { slice in
+                SectorMark(
+                    angle: .value("Hours", slice.seconds),
+                    innerRadius: .ratio(0.62),
+                    angularInset: 1.5
+                )
+                .cornerRadius(4)
+                .foregroundStyle(by: .value("Category", slice.series.name))
+            }
+            .chartForegroundStyleScale(domain: slices.map(\.series.name), range: slices.map(\.series.color))
+            .chartLegend(.hidden)
+            .frame(height: 220)
+            .accessibilityLabel("Donut chart of the share of tracked time per category")
+            .accessibilityValue(slices.map { "\($0.series.name), \(share($0.seconds))" }.joined(separator: "; "))
+            ForEach(slices) { slice in
+                LegendRow(series: slice.series, seconds: slice.seconds, detail: share(slice.seconds))
             }
             if ranked.count > Self.collapsedCount {
                 Button(isShowingAll ? "Show fewer" : "Show all \(ranked.count) categories") {
@@ -121,9 +131,30 @@ private struct OverallCategoryCard: View {
         .cardStyle()
     }
 
+    private struct Slice: Identifiable {
+        let series: ChartSeries
+        let seconds: Double
+        var id: String { series.name }
+    }
+
+    /// One slice per shown category; while collapsed, the rest fold into "Other categories" so the
+    /// donut still adds up to everything tracked.
+    private func slices(shown: [UUID?], ranked: [UUID?]) -> [Slice] {
+        var slices = shown.map { Slice(series: colors.series(for: $0), seconds: overall.totalsByCategory[$0] ?? 0) }
+        let otherSeconds = ranked.dropFirst(shown.count).reduce(0) { $0 + (overall.totalsByCategory[$1] ?? 0) }
+        if otherSeconds > 0 {
+            slices.append(Slice(series: ChartSeries(name: "Other categories", color: ChartPalette.neutral), seconds: otherSeconds))
+        }
+        return slices
+    }
+
+    private func fraction(_ seconds: Double) -> Double {
+        guard overall.trackedSeconds > 0 else { return 0 }
+        return seconds / Double(overall.trackedSeconds)
+    }
+
     private func share(_ seconds: Double) -> String {
-        guard overall.trackedSeconds > 0 else { return "0%" }
-        return (seconds / Double(overall.trackedSeconds)).formatted(.percent.precision(.fractionLength(0)))
+        fraction(seconds).formatted(.percent.precision(.fractionLength(0)))
     }
 }
 
