@@ -7,3 +7,4 @@ node_modules
 /ios/TimeTracker/build/
 /ios/TimeTracker/.build/
 /ios/TimeTracker/DerivedData/
+/ios/TimeTracker/xtool
