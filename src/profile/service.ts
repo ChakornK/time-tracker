@@ -1,4 +1,5 @@
 import argon2 from "argon2";
+import { sql } from "kysely";
 import type { Database } from "../db/client.js";
 import { isUniqueViolation, toDate } from "../db/utils.js";
 import { DomainError } from "../errors.js";
@@ -111,17 +112,20 @@ export class ProfileService {
   }
 
   async createCategory(userId: string, input: CreateCategoryInput): Promise<CategoryResponse> {
-    const colorHex = input.colorHex ?? nextCategoryColor(
-      (await this.db.selectFrom("categories").select("color_hex").where("user_id", "=", userId).execute())
-        .map((row) => row.color_hex),
-    );
-
     try {
-      const row = await this.db
-        .insertInto("categories")
-        .values({ user_id: userId, name: input.name, color_hex: colorHex })
-        .returning(["id", "name", "color_hex", "created_at"])
-        .executeTakeFirstOrThrow();
+      // The lock serializes one account's creates so two at once can't both claim the same free color.
+      const row = await this.db.transaction().execute(async (trx) => {
+        await sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`.execute(trx);
+        const colorHex = input.colorHex ?? nextCategoryColor(
+          (await trx.selectFrom("categories").select("color_hex").where("user_id", "=", userId).execute())
+            .map((existing) => existing.color_hex),
+        );
+        return trx
+          .insertInto("categories")
+          .values({ user_id: userId, name: input.name, color_hex: colorHex })
+          .returning(["id", "name", "color_hex", "created_at"])
+          .executeTakeFirstOrThrow();
+      });
 
       return toCategory(row);
     } catch (error) {

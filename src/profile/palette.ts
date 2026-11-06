@@ -13,8 +13,11 @@ export const categoryPalette = [
   "#E34948",
 ] as const;
 
-/** The first palette color none of `usedColors` takes, cycling through the palette once all are taken. */
+/** Given to every category past the eighth, so charts color only the first eight and grey out the rest. */
+export const overflowCategoryColor = "#8E8E93";
+
+/** The first palette color none of `usedColors` takes, or grey once all eight are taken. */
 export function nextCategoryColor(usedColors: string[]): string {
   const used = new Set(usedColors.map((color) => color.toUpperCase()));
-  return categoryPalette.find((color) => !used.has(color)) ?? categoryPalette[usedColors.length % categoryPalette.length];
+  return categoryPalette.find((color) => !used.has(color)) ?? overflowCategoryColor;
 }

@@ -70,7 +70,7 @@ export interface GoalsTable {
   id: Generated<string>;
   user_id: string;
   category_id: string;
-  period: "day" | "week" | "month";
+  period: "day" | "week";
   target_seconds: number;
   created_at: Generated<Timestamp>;
 }

@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-export const goalPeriods = ["day", "week", "month"] as const;
+export const goalPeriods = ["day", "week"] as const;
 
-const targetSecondsSchema = z.number().int().min(60).max(31 * 86400);
+const targetSecondsSchema = z.number().int().min(60).max(7 * 86400);
 
 export const createGoalSchema = z.object({
   categoryId: z.uuid(),
