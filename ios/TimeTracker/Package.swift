@@ -4,7 +4,7 @@ import PackageDescription
 var packageDependencies: [Package.Dependency] = [
     .package(
         url: "https://github.com/ChakornK/OpenSwiftData.git",
-        revision: "078eba9c473900af3a3fe6c562a7048f6766f585"),
+        revision: "8b9e977447e01fd833688697f2193e7453483e26"),
 ]
 var swiftDataDependencies: [Target.Dependency] = [
     .product(name: "SwiftData", package: "OpenSwiftData"),

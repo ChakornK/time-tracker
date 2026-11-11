@@ -1,5 +1,5 @@
 {
-  "originHash" : "3d5a78761a4d0612461b7f232825f8ed692b43073aa2dfd2f8ea3e8b7b989926",
+  "originHash" : "d2e8598a3ad94903c0ab4dc63199530ae7a31f0bdf624748fb995ec4428e2b3f",
   "pins" : [
     {
       "identity" : "foundationessentialsshim",
@@ -23,7 +23,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ChakornK/OpenSwiftData.git",
       "state" : {
-        "revision" : "078eba9c473900af3a3fe6c562a7048f6766f585"
+        "revision" : "8b9e977447e01fd833688697f2193e7453483e26"
       }
     },
     {
